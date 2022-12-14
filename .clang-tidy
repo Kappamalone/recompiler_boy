@@ -1,0 +1,28 @@
+# stolen from: https://github.com/cpp-best-practices/gui_starter_template/blob/main/.clang-tidy
+---
+Checks: "*,
+        -abseil-*,
+        -altera-*,
+        -android-*,
+        -fuchsia-*,
+        -google-*,
+        -llvm*,
+        -modernize-use-trailing-return-type,
+        -zircon-*,
+        -readability-else-after-return,
+        -readability-static-accessed-through-instance,
+        -readability-avoid-const-params-in-decls,
+        -cppcoreguidelines-non-private-member-variables-in-classes,
+        -misc-non-private-member-variables-in-classes,
+        -readability-magic-numbers,
+        -readability-implicit-bool-conversion,
+        -readability-identifier-length,
+        -cppcoreguidelines-pro-type-union-access,
+        -cppcoreguidelines-pro-bounds-constant-array-index,
+        -cppcoreguidelines-avoid-magic-numbers,
+        -bugprone-easily-swappable-parameters,
+"
+WarningsAsErrors: ''
+HeaderFilterRegex: ''
+FormatStyle:     none
+
