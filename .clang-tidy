@@ -21,6 +21,7 @@ Checks: "*,
         -cppcoreguidelines-pro-bounds-constant-array-index,
         -cppcoreguidelines-avoid-magic-numbers,
         -bugprone-easily-swappable-parameters,
+        -hicpp-signed-bitwise
         -cppcoreguidelines-prefer-member-initializer"
 WarningsAsErrors: ''
 HeaderFilterRegex: ''

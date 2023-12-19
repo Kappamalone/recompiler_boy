@@ -3,6 +3,8 @@ set(SOURCES
     core.h
     core.cpp
     common.h
+    interpreter.h
+    interpreter.cpp
 )
 
 add_library(core ${SOURCES})

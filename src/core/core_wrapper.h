@@ -1,4 +1,5 @@
 #pragma once
+
 #include "common.h"
 #include "core.h"
 #include <chrono>
@@ -18,7 +19,8 @@ private:
 
 public:
   CoreWrapper(std::function<void()> start, std::function<void()> end)
-      : wait_for_ui_thread(std::move(start)), ping_ui_thread(std::move(end)) {}
+      : core("", "../roms/gb-test-roms/cpu_instrs/individual/06-ld r,r.gb"),
+        wait_for_ui_thread(std::move(start)), ping_ui_thread(std::move(end)) {}
 
   void run() {
     using frame_period = std::chrono::duration<long long, std::ratio<1, 60>>;

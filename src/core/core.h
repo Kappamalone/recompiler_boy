@@ -1,3 +1,5 @@
+#pragma once
+
 #include "common.h"
 #include <array>
 #include <cstdint>
@@ -9,6 +11,10 @@
 // -> Implement the instruction execution
 // -> Render bg tiles
 
+namespace Regs {
+enum Regs { AF = 0, BC, DE, HL };
+};
+
 class Core {
 public:
   struct {
@@ -16,9 +22,6 @@ public:
     size_t width = 160;
     size_t height = 144;
   } fb;
-
-  // config
-  bool skip_bootrom = true;
 
   // registers
   uint16_t pc;
@@ -40,6 +43,7 @@ public:
   // memory read/write functions
   template <typename T>
   T mem_read(uint32_t addr);
+  uint8_t& mem_byte_reference(uint32_t addr);
   template <typename T>
   void mem_write(uint32_t addr, T value);
 
@@ -48,7 +52,7 @@ public:
   void load_rom(const char* path);
 
 public:
-  Core();
+  Core(const char* bootrom_path, const char* rom_path);
   void run_frame();
   [[nodiscard]] const auto& get_fb_ref() const { return fb; }
 };
