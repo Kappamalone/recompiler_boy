@@ -17,8 +17,19 @@ int GBInterpreter::execute_func(Core& core) {
 
     } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0x1) {
       cycles_taken = ld_r16_u16(core, (opcode >> 4) & 0b11);
+
+    } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b0010) {
+      cycles_taken = ld_r16_a_addr(core, opcode >> 4 & 0b11);
+
+    } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b1010) {
+      cycles_taken = ld_a_r16_addr(core, opcode >> 4 & 0b11);
+
     } else if (opcode >> 6 == 0b01) {
-      cycles_taken = ld_r8_r8(core, (opcode >> 3 & 0x7), opcode & 0x7);
+      cycles_taken = ld_r8_r8(core, opcode >> 3 & 0x7, opcode & 0x7);
+
+    } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b110) {
+      cycles_taken = ld_r8_u8(core, opcode >> 3 & 0x7);
+
     } else {
       PANIC("Unhandled opcode: 0x{:02X} | 0b{:08b}\n", opcode, opcode);
     }
@@ -45,6 +56,27 @@ static constexpr uint16_t& get_group_1(Core& core, int gp1) {
       break;
     default:
       PANIC("group 1 error!\n");
+  }
+}
+
+static constexpr uint8_t& get_group_2(Core& core, int gp2) {
+  switch (gp2) {
+    case 0:
+      return core.mem_byte_reference(core.regs[Regs::BC]);
+      break;
+    case 1:
+      return core.mem_byte_reference(core.regs[Regs::DE]);
+      break;
+    case 2:
+      core.regs[Regs::HL]++;
+      return core.mem_byte_reference(core.regs[Regs::HL] - 1);
+      break;
+    case 3:
+      core.regs[Regs::HL]--;
+      return core.mem_byte_reference(core.regs[Regs::HL] + 1);
+      break;
+    default:
+      PANIC("group 2 error!\n");
   }
 }
 
@@ -103,4 +135,31 @@ int GBInterpreter::ld_r8_r8(Core& core, int r8_dest, int r8_src) {
   auto& dest = get_r8(core, r8_dest);
   src = dest;
   return 4;
+}
+
+int GBInterpreter::ld_r8_u8(Core& core, int r8_src) {
+  auto& src = get_r8(core, r8_src);
+  auto imm8 = core.mem_read<uint8_t>(core.pc++);
+  src = imm8;
+  return 4;
+}
+
+int GBInterpreter::ld_a_r16_addr(Core& core, int gp2) {
+  auto& src = get_r8(core, 7);
+  auto dest = get_group_2(core, gp2);
+  src = dest;
+  return 8;
+}
+
+int GBInterpreter::ld_r16_a_addr(Core& core, int gp2) {
+  auto src = get_group_2(core, gp2);
+  auto& dest = get_r8(core, 7);
+  src = dest;
+  return 8;
+}
+
+int GBInterpreter::inc_r8(Core& core, int r8) {
+  get_r8(core, r8)++;
+  // TODO: getters and setters for flags
+  return 8;
 }

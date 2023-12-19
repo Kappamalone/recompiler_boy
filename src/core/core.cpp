@@ -35,6 +35,13 @@ Core::Core(const char* bootrom_path, const char* rom_path) {
   } else {
     load_bootrom(bootrom_path);
   }
+
+  /*
+  // simple test
+  regs[Regs::BC] = 0x00ff;
+  GBInterpreter::ld_r8_r8(*this, 1, 0);
+  PANIC("value of BC: 0x{:04X}", regs[Regs::BC]);
+  */
 }
 
 void Core::load_rom(const char* path) {
@@ -58,6 +65,10 @@ template <typename T>
 T Core::mem_read(uint32_t addr) {
   if (in_between(0x0000, 0x3FFF, addr)) {
     return *(T*)(&bank00[addr]);
+  } else if (in_between(0x4000, 0x7FFF, addr)) {
+    return *(T*)(&bank01[addr]);
+  } else if (in_between(0xC000, 0xCFFF, addr)) {
+    return *(T*)(&wram[addr]);
   } else {
     PANIC("Unknown memory read at 0x{:08X}\n", addr);
   }
@@ -69,6 +80,10 @@ template uint32_t Core::mem_read<uint32_t>(uint32_t addr);
 uint8_t& Core::mem_byte_reference(uint32_t addr) {
   if (in_between(0x0000, 0x3FFF, addr)) {
     return bank00[addr];
+  } else if (in_between(0x4000, 0x7FFF, addr)) {
+    return bank01[addr];
+  } else if (in_between(0xC000, 0xCFFF, addr)) {
+    return wram[addr];
   } else {
     PANIC("Unknown memory read at 0x{:08X}\n", addr);
   }
