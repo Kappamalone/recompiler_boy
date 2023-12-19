@@ -11,8 +11,8 @@ ENDIF()
 
 # Find SFML/-IMGUI shared libraries
 # SET(ImGui-SFML_DIR .)
-find_package(SFML COMPONENTS system window graphics audio CONFIG REQUIRED)
-find_package(ImGui-SFML REQUIRED)
+# find_package(SFML COMPONENTS system window graphics audio CONFIG REQUIRED)
+# find_package(ImGui-SFML REQUIRED)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE ${SFML_INCLUDE_DIR})

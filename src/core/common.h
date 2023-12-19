@@ -1,5 +1,6 @@
 #pragma once
 #include "fmt/core.h"
+#include <cstdint>
 #include <vector>
 
 #ifndef NDEBUG
