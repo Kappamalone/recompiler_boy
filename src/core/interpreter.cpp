@@ -1,19 +1,50 @@
 #include "interpreter.h"
 #include "core.h"
+#include "fmt/core.h"
 #include <cstdint>
+#include <fstream>
+#include <iostream>
+
+void append_to_logging(const std::string& content) {
+  std::ofstream file("../../logging.txt", std::ios::app);
+
+  if (file.is_open()) {
+    file << content;
+    file.close();
+  } else {
+    std::cerr << "Unable to open file: " << std::endl;
+  }
+}
 
 int GBInterpreter::execute_func(Core& core) {
   int cycles_to_execute = CYCLES_PER_FRAME;
 
   while (cycles_to_execute > 0) {
-    auto opcode = core.mem_read<uint8_t>(core.pc++);
+    auto opcode = core.mem_read<uint8_t>(core.pc);
+    if (opcode != 0x00) {
+      append_to_logging(
+          fmt::format("A: {:02X} F: {:02X} B: {:02X} C: {:02X} D: "
+                      "{:02X} E: {:02X} H: {:02X} L: {:02X} SP: {:04X} PC: "
+                      "00:{:04X} ({:02X} "
+                      "{:02X} {:02X} {:02X})\n",
+                      core.regs[Regs::AF] >> 8, core.regs[Regs::AF] & 0xff,
+                      core.regs[Regs::BC] >> 8, core.regs[Regs::BC] & 0xff,
+                      core.regs[Regs::DE] >> 8, core.regs[Regs::DE] & 0xff,
+                      core.regs[Regs::HL] >> 8, core.regs[Regs::HL] & 0xff,
+                      core.sp, core.pc, core.mem_read<uint8_t>(core.pc),
+                      core.mem_read<uint8_t>(core.pc + 1),
+                      core.mem_read<uint8_t>(core.pc + 2),
+                      core.mem_read<uint8_t>(core.pc + 3)));
+    }
+    core.pc++;
     DPRINT("PC: 0x{:04X}, OPCODE: 0x{:02X}\n", core.pc - 1, opcode);
 
     int cycles_taken = 0;
     if (opcode == 0x00) {
       // do nothing...
-    } else if (opcode == 0b1100'0011) {
-      cycles_taken = jp_u16(core);
+      cycles_taken = 4;
+    } else if ((opcode >> 5) == 0b001 && (opcode & 0x07) == 0b000) {
+      cycles_taken = jr_conditional(core, opcode >> 3 & 0b11);
 
     } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0x1) {
       cycles_taken = ld_r16_u16(core, (opcode >> 4) & 0b11);
@@ -24,14 +55,20 @@ int GBInterpreter::execute_func(Core& core) {
     } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b1010) {
       cycles_taken = ld_a_r16_addr(core, opcode >> 4 & 0b11);
 
-    } else if (opcode >> 6 == 0b01) {
-      cycles_taken = ld_r8_r8(core, opcode >> 3 & 0x7, opcode & 0x7);
+    } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b100) {
+      cycles_taken = inc_r8(core, opcode >> 3 & 0x7);
+
+    } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b101) {
+      cycles_taken = dec_r8(core, opcode >> 3 & 0x7);
 
     } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b110) {
       cycles_taken = ld_r8_u8(core, opcode >> 3 & 0x7);
 
-    } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b100) {
-      cycles_taken = inc_r8(core, opcode >> 3 & 0x7);
+    } else if (opcode >> 6 == 0b01) {
+      cycles_taken = ld_r8_r8(core, opcode >> 3 & 0x7, opcode & 0x7);
+
+    } else if (opcode == 0b1100'0011) {
+      cycles_taken = jp_u16(core);
 
     } else {
       PANIC("Unhandled opcode: 0x{:02X} | 0b{:08b}\n", opcode, opcode);
@@ -83,7 +120,7 @@ static constexpr uint8_t& get_group_2(Core& core, int gp2) {
   }
 }
 
-// clang-tidy: disable
+// NOLINTBEGIN
 static constexpr uint8_t& get_r8(Core& core, int r8) {
   switch (r8) {
     case 0:
@@ -113,13 +150,31 @@ static constexpr uint8_t& get_r8(Core& core, int r8) {
       PANIC("r8 error!\n");
   }
 }
-// clang-tidy: enable
+// NOLINTEND
+
+static constexpr bool condition_table(Core& core, int num) {
+  switch (num) {
+    case 0:
+      return !core.get_flag(Regs::Z);
+      break;
+    case 1:
+      return core.get_flag(Regs::Z);
+      break;
+    case 2:
+      return !core.get_flag(Regs::C);
+      break;
+    case 3:
+      return core.get_flag(Regs::C);
+      break;
+    default:
+      PANIC("condition error!\n");
+  }
+}
 
 int GBInterpreter::jp_u16(Core& core) {
   auto jump_addr = core.mem_read<uint16_t>(core.pc);
   core.pc += 2;
   core.pc = jump_addr;
-  DPRINT("Jumping to 0x{:04X}\n", jump_addr);
 
   return 16;
 }
@@ -133,7 +188,7 @@ int GBInterpreter::ld_r16_u16(Core& core, int gp1) {
   return 12;
 }
 
-int GBInterpreter::ld_r8_r8(Core& core, int r8_dest, int r8_src) {
+int GBInterpreter::ld_r8_r8(Core& core, int r8_src, int r8_dest) {
   auto& src = get_r8(core, r8_src);
   auto& dest = get_r8(core, r8_dest);
   src = dest;
@@ -149,13 +204,13 @@ int GBInterpreter::ld_r8_u8(Core& core, int r8_src) {
 
 int GBInterpreter::ld_a_r16_addr(Core& core, int gp2) {
   auto& src = get_r8(core, 7);
-  auto dest = get_group_2(core, gp2);
+  auto& dest = get_group_2(core, gp2);
   src = dest;
   return 8;
 }
 
 int GBInterpreter::ld_r16_a_addr(Core& core, int gp2) {
-  auto src = get_group_2(core, gp2);
+  auto& src = get_group_2(core, gp2);
   auto& dest = get_r8(core, 7);
   src = dest;
   return 8;
@@ -169,4 +224,24 @@ int GBInterpreter::inc_r8(Core& core, int r8) {
   core.set_flag(Regs::N, false);
 
   return 4;
+}
+
+int GBInterpreter::dec_r8(Core& core, int r8) {
+  auto& src = get_r8(core, r8);
+  core.set_flag(Regs::H, (src & 0xf) == 0); // set on borrow...?
+  src--;
+  core.set_flag(Regs::Z, src == 0);
+  core.set_flag(Regs::N, true);
+
+  return 4;
+}
+
+int GBInterpreter::jr_conditional(Core& core, int condition) {
+  auto rel_signed_offest = (int8_t)core.mem_read<uint8_t>(core.pc++);
+  if (condition_table(core, condition)) {
+    core.pc += rel_signed_offest;
+    return 12;
+  }
+
+  return 8;
 }

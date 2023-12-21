@@ -2,9 +2,21 @@
 #include "interpreter.h"
 #include <cstdint>
 #include <fstream>
+#include <iostream>
+
+static void create_logging_file(const std::string& filename) {
+  std::ofstream file(filename,
+                     std::ios::trunc); // trunc mode wipes the file if it exists
+
+  if (!file.is_open()) {
+    std::cerr << "Unable to create/wipe file: " << filename << std::endl;
+  }
+}
 
 Core::Core(const char* bootrom_path, const char* rom_path) {
   fb.pixels.resize(fb.width * fb.height * 4);
+  // logging:
+  create_logging_file("../../logging.txt");
 
   // registers
   pc = 0x00;
@@ -50,6 +62,7 @@ void Core::load_rom(const char* path) {
     PANIC("Error opening file: {}\n", path);
   }
   file.read((char*)(bank00.data()), sizeof(uint8_t) * 0x4000);
+  file.read((char*)(bank01.data()), sizeof(uint8_t) * 0x4000);
 }
 
 void Core::load_bootrom(const char* path) {}
@@ -66,9 +79,9 @@ T Core::mem_read(uint32_t addr) {
   if (in_between(0x0000, 0x3FFF, addr)) {
     return *(T*)(&bank00[addr]);
   } else if (in_between(0x4000, 0x7FFF, addr)) {
-    return *(T*)(&bank01[addr]);
+    return *(T*)(&bank01[addr - 0x4000]);
   } else if (in_between(0xC000, 0xCFFF, addr)) {
-    return *(T*)(&wram[addr]);
+    return *(T*)(&wram[addr - 0xC000]);
   } else {
     PANIC("Unknown memory read at 0x{:08X}\n", addr);
   }
@@ -81,9 +94,9 @@ uint8_t& Core::mem_byte_reference(uint32_t addr) {
   if (in_between(0x0000, 0x3FFF, addr)) {
     return bank00[addr];
   } else if (in_between(0x4000, 0x7FFF, addr)) {
-    return bank01[addr];
+    return bank01[addr - 0x4000];
   } else if (in_between(0xC000, 0xCFFF, addr)) {
-    return wram[addr];
+    return wram[addr - 0xC000];
   } else {
     PANIC("Unknown memory read at 0x{:08X}\n", addr);
   }
