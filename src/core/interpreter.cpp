@@ -30,6 +30,9 @@ int GBInterpreter::execute_func(Core& core) {
     } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b110) {
       cycles_taken = ld_r8_u8(core, opcode >> 3 & 0x7);
 
+    } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b100) {
+      cycles_taken = inc_r8(core, opcode >> 3 & 0x7);
+
     } else {
       PANIC("Unhandled opcode: 0x{:02X} | 0b{:08b}\n", opcode, opcode);
     }
@@ -159,7 +162,11 @@ int GBInterpreter::ld_r16_a_addr(Core& core, int gp2) {
 }
 
 int GBInterpreter::inc_r8(Core& core, int r8) {
-  get_r8(core, r8)++;
-  // TODO: getters and setters for flags
-  return 8;
+  auto& src = get_r8(core, r8);
+  core.set_flag(Regs::H, (src & 0xf) == 0xf);
+  src++;
+  core.set_flag(Regs::Z, src == 0);
+  core.set_flag(Regs::N, false);
+
+  return 4;
 }

@@ -13,7 +13,8 @@
 
 namespace Regs {
 enum Regs { AF = 0, BC, DE, HL };
-};
+enum Flag { Z, N, H, C };
+}; // namespace Regs
 
 class Core {
 public:
@@ -28,6 +29,8 @@ public:
   uint16_t sp;
   // AF, BC, DE, HL
   std::array<uint16_t, 4> regs{};
+  bool get_flag(Regs::Flag f);
+  void set_flag(Regs::Flag f, bool value);
 
   // memory
   bool bootrom_enabled = true;

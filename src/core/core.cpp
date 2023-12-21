@@ -101,6 +101,44 @@ template void Core::mem_write<uint8_t>(uint32_t addr, uint8_t value);
 template void Core::mem_write<uint16_t>(uint32_t addr, uint16_t value);
 template void Core::mem_write<uint32_t>(uint32_t addr, uint32_t value);
 
+bool Core::get_flag(Regs::Flag f) {
+  switch (f) {
+    case Regs::Flag::Z:
+      return regs[Regs::AF] >> 7 & 1;
+      break;
+    case Regs::Flag::N:
+      return regs[Regs::AF] >> 6 & 1;
+      break;
+    case Regs::Flag::H:
+      return regs[Regs::AF] >> 5 & 1;
+      break;
+    case Regs::Flag::C:
+      return regs[Regs::AF] >> 4 & 1;
+      break;
+    default:
+      PANIC("Invalid get flag");
+  }
+}
+
+void Core::set_flag(Regs::Flag f, bool value) {
+  switch (f) {
+    case Regs::Flag::Z:
+      regs[Regs::AF] = (regs[Regs::AF] & ~(1 << 7)) | (value << 7);
+      break;
+    case Regs::Flag::N:
+      regs[Regs::AF] = (regs[Regs::AF] & ~(1 << 6)) | (value << 6);
+      break;
+    case Regs::Flag::H:
+      regs[Regs::AF] = (regs[Regs::AF] & ~(1 << 5)) | (value << 5);
+      break;
+    case Regs::Flag::C:
+      regs[Regs::AF] = (regs[Regs::AF] & ~(1 << 4)) | (value << 4);
+      break;
+    default:
+      PANIC("Invalid set flag");
+  }
+}
+
 void Core::run_frame() {
   static int counter = 0;
 
