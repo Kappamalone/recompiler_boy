@@ -54,6 +54,14 @@ public:
   void load_bootrom(const char* path);
   void load_rom(const char* path);
 
+  // mmio
+  uint8_t SB;
+  uint8_t TAC;
+  uint8_t IF;
+  uint8_t IE;
+  uint8_t LY;
+  uint8_t STUB;
+
 public:
   Core(const char* bootrom_path, const char* rom_path);
   void run_frame();

@@ -29,15 +29,21 @@ Core::Core(const char* bootrom_path, const char* rom_path) {
   bank01.resize(0x4000);
   vram.resize(0x2000);
   ext_ram.resize(0x2000);
-  wram.resize(0x1000);
+  wram.resize(0x2000);
   oam.resize(0xA0);
   hram.resize(0x7f);
+
+  // mmio
+  TAC = 0;
+  IF = 0;
+  IE = 0;
+  SB = 0;
 
   load_rom(rom_path);
   if (strcmp(bootrom_path, "") == 0) {
     // skip bootrom initialisation
     bootrom_enabled = false;
-    pc = 0x100;
+    pc = 0x101;
     sp = 0xfffe;
     regs[0] = 0x01b0;
     regs[1] = 0x0013;
@@ -47,13 +53,6 @@ Core::Core(const char* bootrom_path, const char* rom_path) {
   } else {
     load_bootrom(bootrom_path);
   }
-
-  /*
-  // simple test
-  regs[Regs::BC] = 0x00ff;
-  GBInterpreter::ld_r8_r8(*this, 1, 0);
-  PANIC("value of BC: 0x{:04X}", regs[Regs::BC]);
-  */
 }
 
 void Core::load_rom(const char* path) {
@@ -80,7 +79,7 @@ T Core::mem_read(uint32_t addr) {
     return *(T*)(&bank00[addr]);
   } else if (in_between(0x4000, 0x7FFF, addr)) {
     return *(T*)(&bank01[addr - 0x4000]);
-  } else if (in_between(0xC000, 0xCFFF, addr)) {
+  } else if (in_between(0xC000, 0xDFFF, addr)) {
     return *(T*)(&wram[addr - 0xC000]);
   } else {
     PANIC("Unknown memory read at 0x{:08X}\n", addr);
@@ -93,12 +92,50 @@ template uint32_t Core::mem_read<uint32_t>(uint32_t addr);
 uint8_t& Core::mem_byte_reference(uint32_t addr) {
   if (in_between(0x0000, 0x3FFF, addr)) {
     return bank00[addr];
+
   } else if (in_between(0x4000, 0x7FFF, addr)) {
     return bank01[addr - 0x4000];
-  } else if (in_between(0xC000, 0xCFFF, addr)) {
+
+  } else if (in_between(0x8000, 0x9FFF, addr)) {
+    return vram[addr - 0x8000];
+
+  } else if (in_between(0xC000, 0xDFFF, addr)) {
     return wram[addr - 0xC000];
+
+  } else if (in_between(0xFF80, 0xFFFE, addr)) {
+    return hram[addr - 0xFF80];
+
+  } else if (in_between(0xFF00, 0xFFFF, addr)) {
+    switch (addr) {
+      case 0xFF01:
+        return SB;
+      case 0xFF02:
+        printf("%c", SB);
+        return STUB;
+      case 0xFF07:
+        return TAC;
+      case 0xFF0F:
+        return IF;
+      case 0xFF24:
+      case 0xFF25:
+      case 0xFF26:
+      case 0xFF40:
+      case 0xFF42:
+      case 0xFF43:
+      case 0xFF47:
+        // DPRINT("STUB: MMIO \n");
+        return STUB;
+      case 0xFF44:
+        // DPRINT("STUB LY TO 0x90\n");
+        LY = 0x90;
+        return LY;
+      case 0xFFFF:
+        return IE;
+      default:
+        PANIC("Unknown memory reference at 0x{:08X}\n", addr);
+    }
   } else {
-    PANIC("Unknown memory read at 0x{:08X}\n", addr);
+    PANIC("Unknown memory reference at 0x{:08X}\n", addr);
   }
 }
 
@@ -106,6 +143,8 @@ template <typename T>
 void Core::mem_write(uint32_t addr, T value) {
   if (in_between(0x0000, 0x3FFF, addr)) {
     *(T*)(&bank00[addr]) = value;
+  } else if (in_between(0xC000, 0xDFFF, addr)) {
+    *(T*)(&wram[addr - 0xC000]) = value;
   } else {
     PANIC("Unknown memory write at 0x{:08X}\n", addr);
   }
