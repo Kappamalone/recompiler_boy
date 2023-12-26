@@ -24,6 +24,14 @@ public:
     size_t height = 144;
   } fb;
 
+  using PPU = struct PPU {
+    Core& core;
+    explicit PPU(Core& core) : core(core) {}
+
+    void test();
+  };
+  PPU ppu{*this};
+
   // registers
   uint16_t pc;
   uint16_t sp;
@@ -55,11 +63,13 @@ public:
   void load_rom(const char* path);
 
   // mmio
+  uint8_t LCDC;
   uint8_t SB;
   uint8_t TAC;
   uint8_t IF;
   uint8_t IE;
   uint8_t LY;
+  uint8_t BGP;
   uint8_t STUB;
 
 public:

@@ -5,6 +5,7 @@ set(SOURCES
     common.h
     interpreter.h
     interpreter.cpp
+    ppu.cpp
 )
 
 add_library(core ${SOURCES})

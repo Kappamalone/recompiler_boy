@@ -18,3 +18,13 @@
   exit(1);                  \
 } while (0)                 \
 //clang-format on
+//
+
+#define PRINT8(VAR) PRINT("0x{:02X}\n", VAR);
+#define PRINT16(VAR) PRINT("0x{:04X}\n", VAR);
+#define PRINT32(VAR) PRINT("0x{:08X}\n", VAR);
+#define PRINT64(VAR) PRINT("0x{:016X}\n", VAR);
+
+// bit manipulation
+#define BIT(VALUE, POS) ((VALUE >> POS) & 1)
+#define BIT_REGION(VALUE, POS, SIZE) (VALUE >> POS) & ((((uint64_t)1 << SIZE)-1))

@@ -34,9 +34,12 @@ Core::Core(const char* bootrom_path, const char* rom_path) {
   hram.resize(0x7f);
 
   // mmio
+  LCDC = 0;
+  SB = 0;
   TAC = 0;
   IF = 0;
   IE = 0;
+  LY = 0;
   SB = 0;
 
   load_rom(rom_path);
@@ -79,6 +82,8 @@ T Core::mem_read(uint32_t addr) {
     return *(T*)(&bank00[addr]);
   } else if (in_between(0x4000, 0x7FFF, addr)) {
     return *(T*)(&bank01[addr - 0x4000]);
+  } else if (in_between(0x8000, 0x9FFF, addr)) {
+    return *(T*)(&vram[addr - 0x8000]);
   } else if (in_between(0xC000, 0xDFFF, addr)) {
     return *(T*)(&wram[addr - 0xC000]);
   } else {
@@ -117,16 +122,20 @@ uint8_t& Core::mem_byte_reference(uint32_t addr) {
       case 0xFF0F:
         return IF;
       case 0xFF24:
-      case 0xFF25:
-      case 0xFF26:
-      case 0xFF40:
-      case 0xFF42:
-      case 0xFF43:
-      case 0xFF47:
-        // DPRINT("STUB: MMIO \n");
         return STUB;
+      case 0xFF25:
+        return STUB;
+      case 0xFF26:
+        return STUB;
+      case 0xFF40:
+        return LCDC;
+      case 0xFF42:
+        return STUB;
+      case 0xFF43:
+        return STUB;
+      case 0xFF47:
+        return BGP;
       case 0xFF44:
-        // DPRINT("STUB LY TO 0x90\n");
         LY = 0x90;
         return LY;
       case 0xFFFF:
@@ -195,19 +204,5 @@ void Core::run_frame() {
   static int counter = 0;
 
   GBInterpreter::execute_func(*this);
-
-  for (auto i = 0; i < fb.width; i++) {
-    fb.pixels[i * 4 + counter * fb.width * 4] = 0xff;
-    fb.pixels[i * 4 + counter * fb.width * 4 + 1] = 0xff;
-    fb.pixels[i * 4 + counter * fb.width * 4 + 2] = 0xff;
-    fb.pixels[i * 4 + counter * fb.width * 4 + 3] = 0xff;
-  }
-
-  counter++;
-  if (counter == fb.height) {
-    counter = 0;
-    for (auto i = 0; i < fb.width * fb.height * 4; i++) {
-      fb.pixels[i] = 0;
-    }
-  }
+  ppu.test();
 }
