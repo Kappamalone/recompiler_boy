@@ -46,7 +46,7 @@ Core::Core(const char* bootrom_path, const char* rom_path) {
   if (strcmp(bootrom_path, "") == 0) {
     // skip bootrom initialisation
     bootrom_enabled = false;
-    pc = 0x101;
+    pc = 0x100;
     sp = 0xfffe;
     regs[0] = 0x01b0;
     regs[1] = 0x0013;
@@ -204,5 +204,5 @@ void Core::run_frame() {
   static int counter = 0;
 
   GBInterpreter::execute_func(*this);
-  ppu.test();
+  ppu.draw_bg();
 }

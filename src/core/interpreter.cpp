@@ -130,6 +130,7 @@ int GBInterpreter::execute_func(Core& core) {
   int cycles_to_execute = CYCLES_PER_FRAME;
 
   while (cycles_to_execute > 0) {
+    /*
     append_to_logging(fmt::format(
         "A: {:02X} F: {:02X} B: {:02X} C: {:02X} D: "
         "{:02X} E: {:02X} H: {:02X} L: {:02X} SP: {:04X} PC: "
@@ -142,6 +143,7 @@ int GBInterpreter::execute_func(Core& core) {
         core.mem_read<uint8_t>(core.pc), core.mem_read<uint8_t>(core.pc + 1),
         core.mem_read<uint8_t>(core.pc + 2),
         core.mem_read<uint8_t>(core.pc + 3)));
+    */
     auto opcode = core.mem_read<uint8_t>(core.pc);
     core.pc++;
     // DPRINT("PC: 0x{:04X}, OPCODE: 0x{:02X}\n", core.pc - 1, opcode);
@@ -233,6 +235,9 @@ int GBInterpreter::execute_func(Core& core) {
       } else if (bit >> 3 == 0b00011) {
         cycles_taken = rr(core, bit & 0x7);
 
+      } else if (bit >> 3 == 0b00110) {
+        cycles_taken = swap(core, bit & 0x7);
+
       } else {
         PANIC("Unhandled bit opcode: 0x{:02X} | 0b{:08b}\n", bit, bit);
       }
@@ -259,8 +264,13 @@ int GBInterpreter::execute_func(Core& core) {
       cycles_taken = xor_value(core, core.mem_read<uint8_t>(core.pc++));
 
     } else if (opcode == 0b1100'1110) {
-      cycles_taken = add_value(core, core.mem_read<uint8_t>(core.pc++) +
-                                         core.get_flag(Regs::Flag::C));
+      cycles_taken = addc_value(core, core.mem_read<uint8_t>(core.pc++));
+
+    } else if (opcode == 0b1111'0110) {
+      cycles_taken = or_value(core, core.mem_read<uint8_t>(core.pc++));
+
+    } else if (opcode == 0b1101'1110) {
+      cycles_taken = subc_value(core, core.mem_read<uint8_t>(core.pc++));
 
     } else {
       PANIC("Unhandled opcode: 0x{:02X} | 0b{:08b}\n", opcode, opcode);
@@ -488,11 +498,39 @@ int GBInterpreter::add_value(Core& core, uint8_t value) {
   return 8;
 }
 
+int GBInterpreter::addc_value(Core& core, uint8_t value) {
+  auto& acc = get_r8(core, 7);
+  auto carry = core.get_flag(Regs::C);
+  core.set_flag(Regs::H, (uint8_t)(((acc & 0x0f) + (value & 0x0f) + carry) &
+                                   0x10) == 0x10);
+  core.set_flag(Regs::C, (uint16_t)((uint16_t)acc + (uint16_t)value +
+                                    (uint16_t)carry) > 0xff);
+  acc += value + carry;
+  core.set_flag(Regs::Flag::Z, acc == 0);
+  core.set_flag(Regs::Flag::N, false);
+
+  return 8;
+}
+
 int GBInterpreter::sub_value(Core& core, uint8_t value) {
   auto& acc = get_r8(core, 7);
   core.set_flag(Regs::H, (uint8_t)((acc & 0x0f) - (value & 0x0f)) > 0xf);
   core.set_flag(Regs::C, (uint16_t)((uint16_t)acc - (uint16_t)value) > 0xff);
   acc -= value;
+  core.set_flag(Regs::Flag::Z, acc == 0);
+  core.set_flag(Regs::Flag::N, true);
+
+  return 8;
+}
+
+int GBInterpreter::subc_value(Core& core, uint8_t value) {
+  auto& acc = get_r8(core, 7);
+  auto carry = core.get_flag(Regs::C);
+  core.set_flag(Regs::H,
+                (uint8_t)((acc & 0x0f) - (value & 0x0f) - carry) > 0xf);
+  core.set_flag(Regs::C, (uint16_t)((uint16_t)acc - (uint16_t)value -
+                                    (uint16_t)carry) > 0xff);
+  acc = acc - value - carry;
   core.set_flag(Regs::Flag::Z, acc == 0);
   core.set_flag(Regs::Flag::N, true);
 
@@ -562,4 +600,27 @@ int GBInterpreter::jp_hl(Core& core) {
   core.pc = core.regs[Regs::HL];
 
   return 4;
+}
+
+int GBInterpreter::or_value(Core& core, uint8_t value) {
+  auto& acc = get_r8(core, 7);
+  acc |= value;
+  core.set_flag(Regs::Flag::Z, acc == 0);
+  core.set_flag(Regs::Flag::N, false);
+  core.set_flag(Regs::Flag::H, false);
+  core.set_flag(Regs::Flag::C, false);
+
+  return 8;
+}
+
+int GBInterpreter::swap(Core& core, uint8_t r8) {
+  auto& reg = get_r8(core, r8);
+  auto hi = reg >> 4;
+  auto lo = reg & 0xf;
+  reg = lo << 4 | hi;
+  core.set_flag(Regs::Flag::Z, reg == 0);
+  core.set_flag(Regs::Flag::N, false);
+  core.set_flag(Regs::Flag::H, false);
+  core.set_flag(Regs::Flag::C, false);
+  return 8;
 }

@@ -28,7 +28,8 @@ public:
     Core& core;
     explicit PPU(Core& core) : core(core) {}
 
-    void test();
+    void draw_bg();
+    void draw_scanline();
   };
   PPU ppu{*this};
 

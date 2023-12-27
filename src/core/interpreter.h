@@ -40,10 +40,14 @@ public:
   static int xor_value(Core& core, uint8_t value);
   static int add_value(Core& core, uint8_t value);
   static int sub_value(Core& core, uint8_t value);
+  static int addc_value(Core& core, uint8_t value);
+  static int subc_value(Core& core, uint8_t value);
   static int srl(Core& core, uint8_t r8);
   static int rr(Core& core, uint8_t r8);
   static int rra(Core& core);
   static int ret_conditional(Core& core, int condition);
   static int add_hl_r16(Core& core, int gp1);
   static int jp_hl(Core& core);
+  static int or_value(Core& core, uint8_t value);
+  static int swap(Core& core, uint8_t r8);
 };
