@@ -31,6 +31,7 @@ public:
   static int push_r16(Core& core, int gp3);
   static int pop_r16(Core& core, int gp3);
   static int inc_r16(Core& core, int gp1);
+  static int dec_r16(Core& core, int gp1);
   static int or_a_value(Core& core, uint8_t value);
   static int ldh_a_u8(Core& core);
   static int cp_value(Core& core, uint8_t value);
@@ -61,4 +62,8 @@ public:
   static int rl(Core& core, uint8_t r8);
   static int sla(Core& core, uint8_t r8);
   static int sra(Core& core, uint8_t r8);
+  static int ld_u16_sp(Core& core);
+  static int ld_sp_hl(Core& core);
+  static int add_sp_i8(Core& core);
+  static int ld_hl_sp_i8(Core& core);
 };

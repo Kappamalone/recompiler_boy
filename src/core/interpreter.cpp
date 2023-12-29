@@ -152,6 +152,9 @@ int GBInterpreter::execute_func(Core& core) {
     if (opcode == 0x00) {
       // do nothing...
       cycles_taken = 4;
+    } else if (opcode == 0b0000'1000) {
+      cycles_taken = ld_u16_sp(core);
+
     } else if (opcode == 0b0001'1000) {
       cycles_taken = jr_unconditional(core);
 
@@ -175,6 +178,9 @@ int GBInterpreter::execute_func(Core& core) {
 
     } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b0011) {
       cycles_taken = inc_r16(core, opcode >> 4 & 0b11);
+
+    } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b1011) {
+      cycles_taken = dec_r16(core, opcode >> 4 & 0b11);
 
     } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b100) {
       cycles_taken = inc_r8(core, opcode >> 3 & 0x7);
@@ -239,11 +245,20 @@ int GBInterpreter::execute_func(Core& core) {
     } else if (opcode == 0b1110'0000) {
       cycles_taken = ldh_u8_a(core);
 
+    } else if (opcode == 0b1110'1000) {
+      cycles_taken = add_sp_i8(core);
+
     } else if (opcode == 0b1111'0000) {
       cycles_taken = ldh_a_u8(core);
 
+    } else if (opcode == 0b1111'1000) {
+      cycles_taken = ld_hl_sp_i8(core);
+
     } else if (opcode >> 6 == 0b11 && (opcode & 0xf) == 0b0001) {
       cycles_taken = pop_r16(core, opcode >> 4 & 0b11);
+
+    } else if (opcode == 0b1111'1001) {
+      cycles_taken = ld_sp_hl(core);
 
     } else if (opcode == 0b1110'1001) {
       cycles_taken = jp_hl(core);
@@ -324,7 +339,7 @@ int GBInterpreter::execute_func(Core& core) {
       cycles_taken = subc_value(core, core.mem_read<uint8_t>(core.pc++));
 
     } else {
-      PANIC("Unhandled opcode: 0x{:02X} | 0b{:08b}\n", opcode, opcode);
+      PRINT("Unhandled opcode: 0x{:02X} | 0b{:08b}\n", opcode, opcode);
     }
 
     cycles_to_execute -= cycles_taken;
@@ -465,6 +480,11 @@ int GBInterpreter::pop_r16(Core& core, int gp3) {
 
 int GBInterpreter::inc_r16(Core& core, int gp1) {
   get_group_1(core, gp1)++;
+  return 8;
+}
+
+int GBInterpreter::dec_r16(Core& core, int gp1) {
+  get_group_1(core, gp1)--;
   return 8;
 }
 
@@ -791,4 +811,42 @@ int GBInterpreter::sra(Core& core, uint8_t r8) {
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
   return 8;
+}
+
+int GBInterpreter::ld_u16_sp(Core& core) {
+  core.mem_write<uint16_t>(core.mem_read<uint16_t>(core.pc), core.sp);
+  core.pc += 2;
+  return 20;
+}
+
+int GBInterpreter::ld_sp_hl(Core& core) {
+  core.sp = core.regs[Regs::HL];
+  return 8;
+}
+
+int GBInterpreter::add_sp_i8(Core& core) {
+  auto& sp = core.sp;
+  uint8_t imm8 = core.mem_read<uint16_t>(core.pc++);
+  core.set_flag(Regs::Flag::H, (((sp & 0x0f) + (imm8 & 0x0f) & 0x10)) == 0x10);
+  core.set_flag(Regs::Flag::C, (sp & 0xff) + (uint16_t)(imm8) > 0xff);
+
+  sp = (int16_t)core.sp + (int16_t)(int8_t)imm8;
+
+  core.set_flag(Regs::Flag::Z, false);
+  core.set_flag(Regs::Flag::N, false);
+  return 16;
+}
+
+int GBInterpreter::ld_hl_sp_i8(Core& core) {
+  auto& hl = core.regs[Regs::HL];
+  auto sp = core.sp;
+  uint8_t imm8 = core.mem_read<uint16_t>(core.pc++);
+  core.set_flag(Regs::Flag::H, (((sp & 0x0f) + (imm8 & 0x0f) & 0x10)) == 0x10);
+  core.set_flag(Regs::Flag::C, (sp & 0xff) + (uint16_t)(imm8) > 0xff);
+
+  hl = (int16_t)core.sp + (int16_t)(int8_t)imm8;
+
+  core.set_flag(Regs::Flag::Z, false);
+  core.set_flag(Regs::Flag::N, false);
+  return 12;
 }
