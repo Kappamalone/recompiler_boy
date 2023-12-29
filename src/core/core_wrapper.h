@@ -19,7 +19,7 @@ private:
 
 public:
   CoreWrapper(std::function<void()> start, std::function<void()> end)
-      : core("", "../roms/gb-test-roms/cpu_instrs/individual/04-op r,imm.gb"),
+      : core("", "../roms/gb-test-roms/cpu_instrs/individual/09-op r,r.gb"),
         wait_for_ui_thread(std::move(start)), ping_ui_thread(std::move(end)) {}
 
   void run() {

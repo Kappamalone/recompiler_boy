@@ -188,6 +188,24 @@ int GBInterpreter::execute_func(Core& core) {
     } else if (opcode == 0b0001'1111) {
       cycles_taken = rra(core);
 
+    } else if (opcode == 0b0010'1111) {
+      cycles_taken = cpl(core);
+
+    } else if (opcode == 0b0011'0111) {
+      cycles_taken = scf(core);
+
+    } else if (opcode == 0b0011'1111) {
+      cycles_taken = ccf(core);
+
+    } else if (opcode == 0b0000'0111) {
+      cycles_taken = rlca(core);
+
+    } else if (opcode == 0b0001'0111) {
+      cycles_taken = rla_acc(core);
+
+    } else if (opcode == 0b0000'1111) {
+      cycles_taken = rrca(core);
+
     } else if (opcode >> 6 == 0b01) {
       cycles_taken = ld_r8_r8(core, opcode >> 3 & 0x7, opcode & 0x7);
 
@@ -196,6 +214,24 @@ int GBInterpreter::execute_func(Core& core) {
 
     } else if (opcode >> 3 == 0b10101) {
       cycles_taken = xor_value(core, get_r8(core, opcode & 0x7));
+
+    } else if (opcode >> 3 == 0b10111) {
+      cycles_taken = cp_value(core, get_r8(core, opcode & 0x7));
+
+    } else if (opcode >> 3 == 0b10000) {
+      cycles_taken = add_value(core, get_r8(core, opcode & 0x7));
+
+    } else if (opcode >> 3 == 0b10001) {
+      cycles_taken = addc_value(core, get_r8(core, opcode & 0x7));
+
+    } else if (opcode >> 3 == 0b10010) {
+      cycles_taken = sub_value(core, get_r8(core, opcode & 0x7));
+
+    } else if (opcode >> 3 == 0b10011) {
+      cycles_taken = subc_value(core, get_r8(core, opcode & 0x7));
+
+    } else if (opcode >> 3 == 0b10100) {
+      cycles_taken = and_value(core, get_r8(core, opcode & 0x7));
 
     } else if (opcode >> 5 == 0b110 && (opcode & 0x7) == 0) {
       cycles_taken = ret_conditional(core, opcode >> 3 & 0b11);
@@ -237,6 +273,21 @@ int GBInterpreter::execute_func(Core& core) {
 
       } else if (bit >> 3 == 0b00110) {
         cycles_taken = swap(core, bit & 0x7);
+
+      } else if (bit >> 3 == 0b00000) {
+        cycles_taken = rlc(core, bit & 0x7);
+
+      } else if (bit >> 3 == 0b00001) {
+        cycles_taken = rrc(core, bit & 0x7);
+
+      } else if (bit >> 3 == 0b00010) {
+        cycles_taken = rl(core, bit & 0x7);
+
+      } else if (bit >> 3 == 0b00100) {
+        cycles_taken = sla(core, bit & 0x7);
+
+      } else if (bit >> 3 == 0b00101) {
+        cycles_taken = sra(core, bit & 0x7);
 
       } else {
         PANIC("Unhandled bit opcode: 0x{:02X} | 0b{:08b}\n", bit, bit);
@@ -622,5 +673,122 @@ int GBInterpreter::swap(Core& core, uint8_t r8) {
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
   core.set_flag(Regs::Flag::C, false);
+  return 8;
+}
+
+int GBInterpreter::cpl(Core& core) {
+  auto& reg = get_r8(core, 7);
+  reg = ~reg;
+  core.set_flag(Regs::Flag::N, true);
+  core.set_flag(Regs::Flag::H, true);
+  return 4;
+}
+
+int GBInterpreter::scf(Core& core) {
+  core.set_flag(Regs::Flag::N, false);
+  core.set_flag(Regs::Flag::H, false);
+  core.set_flag(Regs::Flag::C, true);
+  return 4;
+}
+
+int GBInterpreter::ccf(Core& core) {
+  core.set_flag(Regs::Flag::N, false);
+  core.set_flag(Regs::Flag::H, false);
+  core.set_flag(Regs::Flag::C, !core.get_flag(Regs::Flag::C));
+  return 4;
+}
+
+int GBInterpreter::rlca(Core& core) {
+  auto& acc = get_r8(core, 7);
+  auto msb = acc >> 7;
+  core.set_flag(Regs::Flag::C, msb);
+  acc <<= 1;
+  acc |= msb;
+  core.set_flag(Regs::Flag::Z, false);
+  core.set_flag(Regs::Flag::N, false);
+  core.set_flag(Regs::Flag::H, false);
+  return 4;
+}
+
+int GBInterpreter::rla_acc(Core& core) {
+  auto& acc = get_r8(core, 7);
+  auto msb = acc >> 7;
+  auto carry = core.get_flag(Regs::Flag::C);
+  core.set_flag(Regs::Flag::C, msb);
+  acc <<= 1;
+  acc |= carry;
+  core.set_flag(Regs::Flag::Z, false);
+  core.set_flag(Regs::Flag::N, false);
+  core.set_flag(Regs::Flag::H, false);
+  return 4;
+}
+
+int GBInterpreter::rrca(Core& core) {
+  auto& acc = get_r8(core, 7);
+  auto lsb = acc & 1;
+  core.set_flag(Regs::Flag::C, lsb);
+  acc >>= 1;
+  acc |= lsb << 7;
+  core.set_flag(Regs::Flag::Z, false);
+  core.set_flag(Regs::Flag::N, false);
+  core.set_flag(Regs::Flag::H, false);
+  return 4;
+}
+
+int GBInterpreter::rlc(Core& core, int r8) {
+  auto& reg = get_r8(core, r8);
+  auto msb = reg >> 7;
+  core.set_flag(Regs::Flag::C, msb);
+  reg <<= 1;
+  reg |= msb;
+  core.set_flag(Regs::Flag::Z, reg == 0);
+  core.set_flag(Regs::Flag::N, false);
+  core.set_flag(Regs::Flag::H, false);
+  return 8;
+}
+
+int GBInterpreter::rrc(Core& core, int r8) {
+  auto& reg = get_r8(core, r8);
+  auto lsb = reg & 1;
+  core.set_flag(Regs::Flag::C, lsb);
+  reg >>= 1;
+  reg |= lsb << 7;
+  core.set_flag(Regs::Flag::Z, reg == 0);
+  core.set_flag(Regs::Flag::N, false);
+  core.set_flag(Regs::Flag::H, false);
+  return 8;
+}
+
+int GBInterpreter::rl(Core& core, uint8_t r8) {
+  auto& reg = get_r8(core, r8);
+  auto carry = core.get_flag(Regs::Flag::C);
+  core.set_flag(Regs::Flag::C, reg >> 7);
+
+  reg = (reg << 1) | carry;
+
+  core.set_flag(Regs::Flag::Z, reg == 0);
+  core.set_flag(Regs::Flag::N, false);
+  core.set_flag(Regs::Flag::H, false);
+  return 8;
+}
+
+int GBInterpreter::sla(Core& core, uint8_t r8) {
+  auto& reg = get_r8(core, r8);
+  core.set_flag(Regs::Flag::C, reg >> 7);
+  reg = (reg << 1) & 0xFE;
+  core.set_flag(Regs::Flag::Z, reg == 0);
+  core.set_flag(Regs::Flag::N, false);
+  core.set_flag(Regs::Flag::H, false);
+  return 8;
+}
+
+int GBInterpreter::sra(Core& core, uint8_t r8) {
+  auto& reg = get_r8(core, r8);
+  auto msb = reg >> 7;
+  core.set_flag(Regs::Flag::C, reg & 1);
+  reg = (reg >> 1) | (msb << 7);
+  core.set_flag(Regs::Flag::Z, reg == 0);
+  core.set_flag(Regs::Flag::N, false);
+  core.set_flag(Regs::Flag::H, false);
   return 8;
 }

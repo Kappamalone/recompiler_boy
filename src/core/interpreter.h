@@ -50,4 +50,15 @@ public:
   static int jp_hl(Core& core);
   static int or_value(Core& core, uint8_t value);
   static int swap(Core& core, uint8_t r8);
+  static int cpl(Core& core);
+  static int scf(Core& core);
+  static int ccf(Core& core);
+  static int rlca(Core& core);
+  static int rla_acc(Core& core);
+  static int rrca(Core& core);
+  static int rlc(Core& core, int r8);
+  static int rrc(Core& core, int r8);
+  static int rl(Core& core, uint8_t r8);
+  static int sla(Core& core, uint8_t r8);
+  static int sra(Core& core, uint8_t r8);
 };
