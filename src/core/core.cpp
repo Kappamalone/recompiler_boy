@@ -21,6 +21,8 @@ Core::Core(const char* bootrom_path, const char* rom_path) {
   // registers
   pc = 0x00;
   sp = 0x00;
+  IME = false;
+  req_IME = false;
   regs.fill(0);
 
   // memory

@@ -145,232 +145,15 @@ int GBInterpreter::execute_func(Core& core) {
         core.mem_read<uint8_t>(core.pc + 2),
         core.mem_read<uint8_t>(core.pc + 3)));
     */
-    auto opcode = core.mem_read<uint8_t>(core.pc);
-    core.pc++;
-    // DPRINT("PC: 0x{:04X}, OPCODE: 0x{:02X}\n", core.pc - 1, opcode);
-
-    int cycles_taken = 0;
-    if (opcode == 0x00) {
-      // do nothing...
-      cycles_taken = 4;
-    } else if (opcode == 0b0000'1000) {
-      cycles_taken = ld_u16_sp(core);
-
-    } else if (opcode == 0b0001'1000) {
-      cycles_taken = jr_unconditional(core);
-
-    } else if (opcode == 0b1110'1010) {
-      cycles_taken = ld_u16_a(core);
-
-    } else if ((opcode >> 5) == 0b001 && (opcode & 0x07) == 0b000) {
-      cycles_taken = jr_conditional(core, opcode >> 3 & 0b11);
-
-    } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0x1) {
-      cycles_taken = ld_r16_u16(core, (opcode >> 4) & 0b11);
-
-    } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b1001) {
-      cycles_taken = add_hl_r16(core, (opcode >> 4) & 0b11);
-
-    } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b0010) {
-      cycles_taken = ld_r16_a_addr(core, opcode >> 4 & 0b11);
-
-    } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b1010) {
-      cycles_taken = ld_a_r16_addr(core, opcode >> 4 & 0b11);
-
-    } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b0011) {
-      cycles_taken = inc_r16(core, opcode >> 4 & 0b11);
-
-    } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b1011) {
-      cycles_taken = dec_r16(core, opcode >> 4 & 0b11);
-
-    } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b100) {
-      cycles_taken = inc_r8(core, opcode >> 3 & 0x7);
-
-    } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b101) {
-      cycles_taken = dec_r8(core, opcode >> 3 & 0x7);
-
-    } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b110) {
-      cycles_taken = ld_r8_u8(core, opcode >> 3 & 0x7);
-
-    } else if (opcode == 0b0010'0111) {
-      cycles_taken = daa(core);
-
-    } else if (opcode == 0b0001'1111) {
-      cycles_taken = rra(core);
-
-    } else if (opcode == 0b0010'1111) {
-      cycles_taken = cpl(core);
-
-    } else if (opcode == 0b0011'0111) {
-      cycles_taken = scf(core);
-
-    } else if (opcode == 0b0011'1111) {
-      cycles_taken = ccf(core);
-
-    } else if (opcode == 0b0000'0111) {
-      cycles_taken = rlca(core);
-
-    } else if (opcode == 0b0001'0111) {
-      cycles_taken = rla_acc(core);
-
-    } else if (opcode == 0b0000'1111) {
-      cycles_taken = rrca(core);
-
-    } else if (opcode >> 6 == 0b01) {
-      cycles_taken = ld_r8_r8(core, opcode >> 3 & 0x7, opcode & 0x7);
-
-    } else if (opcode >> 3 == 0b10110) {
-      cycles_taken = or_a_value(core, get_r8(core, opcode & 0x7));
-
-    } else if (opcode >> 3 == 0b10101) {
-      cycles_taken = xor_value(core, get_r8(core, opcode & 0x7));
-
-    } else if (opcode >> 3 == 0b10111) {
-      cycles_taken = cp_value(core, get_r8(core, opcode & 0x7));
-
-    } else if (opcode >> 3 == 0b10000) {
-      cycles_taken = add_value(core, get_r8(core, opcode & 0x7));
-
-    } else if (opcode >> 3 == 0b10001) {
-      cycles_taken = addc_value(core, get_r8(core, opcode & 0x7));
-
-    } else if (opcode >> 3 == 0b10010) {
-      cycles_taken = sub_value(core, get_r8(core, opcode & 0x7));
-
-    } else if (opcode >> 3 == 0b10011) {
-      cycles_taken = subc_value(core, get_r8(core, opcode & 0x7));
-
-    } else if (opcode >> 3 == 0b10100) {
-      cycles_taken = and_value(core, get_r8(core, opcode & 0x7));
-
-    } else if (opcode >> 5 == 0b110 && (opcode & 0x7) == 0) {
-      cycles_taken = ret_conditional(core, opcode >> 3 & 0b11);
-
-    } else if (opcode == 0b1110'0000) {
-      cycles_taken = ldh_u8_a(core);
-
-    } else if (opcode == 0b1110'1000) {
-      cycles_taken = add_sp_i8(core);
-
-    } else if (opcode == 0b1111'0000) {
-      cycles_taken = ldh_a_u8(core);
-
-    } else if (opcode == 0b1111'1000) {
-      cycles_taken = ld_hl_sp_i8(core);
-
-    } else if (opcode >> 6 == 0b11 && (opcode & 0xf) == 0b0001) {
-      cycles_taken = pop_r16(core, opcode >> 4 & 0b11);
-
-    } else if (opcode == 0b1111'1001) {
-      cycles_taken = ld_sp_hl(core);
-
-    } else if (opcode == 0b1110'1001) {
-      cycles_taken = jp_hl(core);
-
-    } else if (opcode == 0b1100'1001) {
-      cycles_taken = ret(core);
-
-    } else if (opcode == 0b1101'1001) {
-      cycles_taken = reti(core);
-
-    } else if (opcode >> 5 == 0b110 && (opcode & 0x7) == 0b010) {
-      cycles_taken = jp_conditional(core, opcode >> 3 & 0b11);
-
-    } else if (opcode == 0b1110'0010) {
-      cycles_taken = ld_c_a(core);
-
-    } else if (opcode == 0b1111'1010) {
-      cycles_taken = ld_a_u16(core);
-
-    } else if (opcode == 0b1111'0010) {
-      cycles_taken = ld_a_c(core);
-
-    } else if (opcode == 0b1100'0011) {
-      cycles_taken = jp_u16(core);
-
-    } else if (opcode == 0b1111'0011) {
-      cycles_taken = di(core);
-
-    } else if (opcode >> 5 == 0b110 && (opcode & 0x7) == 0b0100) {
-      cycles_taken = call_conditional(core, opcode >> 3 & 0b11);
-
-    } else if (opcode == 0xCB) {
-      const auto second = core.mem_read<uint8_t>(core.pc++);
-      if (second >> 3 == 0b00111) {
-        cycles_taken = srl(core, second & 0x7);
-
-      } else if (second >> 3 == 0b00011) {
-        cycles_taken = rr(core, second & 0x7);
-
-      } else if (second >> 3 == 0b00110) {
-        cycles_taken = swap(core, second & 0x7);
-
-      } else if (second >> 3 == 0b00000) {
-        cycles_taken = rlc(core, second & 0x7);
-
-      } else if (second >> 3 == 0b00001) {
-        cycles_taken = rrc(core, second & 0x7);
-
-      } else if (second >> 3 == 0b00010) {
-        cycles_taken = rl(core, second & 0x7);
-
-      } else if (second >> 3 == 0b00100) {
-        cycles_taken = sla(core, second & 0x7);
-
-      } else if (second >> 3 == 0b00101) {
-        cycles_taken = sra(core, second & 0x7);
-
-      } else if (second >> 6 == 0b01) {
-        cycles_taken = bit(core, second & 0x7, (second >> 3) & 0x7);
-
-      } else if (second >> 6 == 0b10) {
-        cycles_taken = res(core, second & 0x7, (second >> 3) & 0x7);
-
-      } else if (second >> 6 == 0b11) {
-        cycles_taken = set(core, second & 0x7, (second >> 3) & 0x7);
-
-      } else {
-        PANIC("Unhandled bit opcode: 0x{:02X} | 0b{:08b}\n", second, second);
-      }
-
-    } else if (opcode >> 6 == 0b11 && (opcode & 0xf) == 0b0101) {
-      cycles_taken = push_r16(core, opcode >> 4 & 0b11);
-
-    } else if (opcode == 0b1100'1101) {
-      cycles_taken = call_u16(core);
-
-    } else if (opcode == 0b1111'1110) {
-      cycles_taken = cp_value(core, core.mem_read<uint8_t>(core.pc++));
-
-    } else if (opcode == 0b1110'0110) {
-      cycles_taken = and_value(core, core.mem_read<uint8_t>(core.pc++));
-
-    } else if (opcode == 0b1100'0110) {
-      cycles_taken = add_value(core, core.mem_read<uint8_t>(core.pc++));
-
-    } else if (opcode == 0b1101'0110) {
-      cycles_taken = sub_value(core, core.mem_read<uint8_t>(core.pc++));
-
-    } else if (opcode == 0b1110'1110) {
-      cycles_taken = xor_value(core, core.mem_read<uint8_t>(core.pc++));
-
-    } else if (opcode == 0b1100'1110) {
-      cycles_taken = addc_value(core, core.mem_read<uint8_t>(core.pc++));
-
-    } else if (opcode == 0b1111'0110) {
-      cycles_taken = or_value(core, core.mem_read<uint8_t>(core.pc++));
-
-    } else if (opcode == 0b1101'1110) {
-      cycles_taken = subc_value(core, core.mem_read<uint8_t>(core.pc++));
-
-    } else if (opcode >> 6 == 0b11 && (opcode & 0x7) == 0b111) {
-      cycles_taken = rst(core, (opcode >> 3) & 0x7);
-
-    } else {
-      PANIC("Unhandled opcode: 0x{:02X} | 0b{:08b}\n", opcode, opcode);
-    }
-
+    auto opcode = core.mem_read<uint8_t>(core.pc++);
+    int cycles_taken = decode_execute(core, opcode);
     cycles_to_execute -= cycles_taken;
+
+    // enable interrupt from EI after the next instruction
+    if (core.req_IME && opcode != 0xFB) {
+      core.req_IME = false;
+      core.IME = true;
+    }
   }
 
   return 0;
@@ -452,7 +235,12 @@ int GBInterpreter::jr_conditional(Core& core, int condition) {
 }
 
 int GBInterpreter::di(Core& core) {
-  // TODO:
+  core.IME = false;
+  return 4;
+}
+
+int GBInterpreter::ei(Core& core) {
+  core.req_IME = true;
   return 4;
 }
 
@@ -488,10 +276,10 @@ int GBInterpreter::ret(Core& core) {
 }
 
 int GBInterpreter::reti(Core& core) {
-  // FIXME: enable interrupts
   auto jump_addr = core.mem_read<uint16_t>(core.sp);
   core.sp += 2;
   core.pc = jump_addr;
+  core.IME = true; // no need to wait a cycle here I guess?
   return 16;
 }
 
@@ -962,4 +750,232 @@ int GBInterpreter::ld_a_c(Core& core) {
 int GBInterpreter::ld_c_a(Core& core) {
   core.mem_byte_reference(0xFF00 + get_r8(core, 1)) = get_r8(core, 7);
   return 8;
+}
+
+int GBInterpreter::decode_execute(Core& core, uint16_t opcode) {
+  int cycles_taken = 0;
+  if (opcode == 0x00) {
+    // do nothing...
+    cycles_taken = 4;
+  } else if (opcode == 0b0000'1000) {
+    cycles_taken = ld_u16_sp(core);
+
+  } else if (opcode == 0b0001'1000) {
+    cycles_taken = jr_unconditional(core);
+
+  } else if (opcode == 0b1110'1010) {
+    cycles_taken = ld_u16_a(core);
+
+  } else if ((opcode >> 5) == 0b001 && (opcode & 0x07) == 0b000) {
+    cycles_taken = jr_conditional(core, opcode >> 3 & 0b11);
+
+  } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0x1) {
+    cycles_taken = ld_r16_u16(core, (opcode >> 4) & 0b11);
+
+  } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b1001) {
+    cycles_taken = add_hl_r16(core, (opcode >> 4) & 0b11);
+
+  } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b0010) {
+    cycles_taken = ld_r16_a_addr(core, opcode >> 4 & 0b11);
+
+  } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b1010) {
+    cycles_taken = ld_a_r16_addr(core, opcode >> 4 & 0b11);
+
+  } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b0011) {
+    cycles_taken = inc_r16(core, opcode >> 4 & 0b11);
+
+  } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b1011) {
+    cycles_taken = dec_r16(core, opcode >> 4 & 0b11);
+
+  } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b100) {
+    cycles_taken = inc_r8(core, opcode >> 3 & 0x7);
+
+  } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b101) {
+    cycles_taken = dec_r8(core, opcode >> 3 & 0x7);
+
+  } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b110) {
+    cycles_taken = ld_r8_u8(core, opcode >> 3 & 0x7);
+
+  } else if (opcode == 0b0010'0111) {
+    cycles_taken = daa(core);
+
+  } else if (opcode == 0b0001'1111) {
+    cycles_taken = rra(core);
+
+  } else if (opcode == 0b0010'1111) {
+    cycles_taken = cpl(core);
+
+  } else if (opcode == 0b0011'0111) {
+    cycles_taken = scf(core);
+
+  } else if (opcode == 0b0011'1111) {
+    cycles_taken = ccf(core);
+
+  } else if (opcode == 0b0000'0111) {
+    cycles_taken = rlca(core);
+
+  } else if (opcode == 0b0001'0111) {
+    cycles_taken = rla_acc(core);
+
+  } else if (opcode == 0b0000'1111) {
+    cycles_taken = rrca(core);
+
+  } else if (opcode >> 6 == 0b01) {
+    cycles_taken = ld_r8_r8(core, opcode >> 3 & 0x7, opcode & 0x7);
+
+  } else if (opcode >> 3 == 0b10110) {
+    cycles_taken = or_a_value(core, get_r8(core, opcode & 0x7));
+
+  } else if (opcode >> 3 == 0b10101) {
+    cycles_taken = xor_value(core, get_r8(core, opcode & 0x7));
+
+  } else if (opcode >> 3 == 0b10111) {
+    cycles_taken = cp_value(core, get_r8(core, opcode & 0x7));
+
+  } else if (opcode >> 3 == 0b10000) {
+    cycles_taken = add_value(core, get_r8(core, opcode & 0x7));
+
+  } else if (opcode >> 3 == 0b10001) {
+    cycles_taken = addc_value(core, get_r8(core, opcode & 0x7));
+
+  } else if (opcode >> 3 == 0b10010) {
+    cycles_taken = sub_value(core, get_r8(core, opcode & 0x7));
+
+  } else if (opcode >> 3 == 0b10011) {
+    cycles_taken = subc_value(core, get_r8(core, opcode & 0x7));
+
+  } else if (opcode >> 3 == 0b10100) {
+    cycles_taken = and_value(core, get_r8(core, opcode & 0x7));
+
+  } else if (opcode >> 5 == 0b110 && (opcode & 0x7) == 0) {
+    cycles_taken = ret_conditional(core, opcode >> 3 & 0b11);
+
+  } else if (opcode == 0b1110'0000) {
+    cycles_taken = ldh_u8_a(core);
+
+  } else if (opcode == 0b1110'1000) {
+    cycles_taken = add_sp_i8(core);
+
+  } else if (opcode == 0b1111'0000) {
+    cycles_taken = ldh_a_u8(core);
+
+  } else if (opcode == 0b1111'1000) {
+    cycles_taken = ld_hl_sp_i8(core);
+
+  } else if (opcode >> 6 == 0b11 && (opcode & 0xf) == 0b0001) {
+    cycles_taken = pop_r16(core, opcode >> 4 & 0b11);
+
+  } else if (opcode == 0b1111'1001) {
+    cycles_taken = ld_sp_hl(core);
+
+  } else if (opcode == 0b1110'1001) {
+    cycles_taken = jp_hl(core);
+
+  } else if (opcode == 0b1100'1001) {
+    cycles_taken = ret(core);
+
+  } else if (opcode == 0b1101'1001) {
+    cycles_taken = reti(core);
+
+  } else if (opcode >> 5 == 0b110 && (opcode & 0x7) == 0b010) {
+    cycles_taken = jp_conditional(core, opcode >> 3 & 0b11);
+
+  } else if (opcode == 0b1110'0010) {
+    cycles_taken = ld_c_a(core);
+
+  } else if (opcode == 0b1111'1010) {
+    cycles_taken = ld_a_u16(core);
+
+  } else if (opcode == 0b1111'0010) {
+    cycles_taken = ld_a_c(core);
+
+  } else if (opcode == 0b1100'0011) {
+    cycles_taken = jp_u16(core);
+
+  } else if (opcode == 0b1111'0011) {
+    cycles_taken = di(core);
+
+  } else if (opcode == 0b1111'1011) {
+    cycles_taken = ei(core);
+
+  } else if (opcode >> 5 == 0b110 && (opcode & 0x7) == 0b0100) {
+    cycles_taken = call_conditional(core, opcode >> 3 & 0b11);
+
+  } else if (opcode == 0xCB) {
+    const auto second = core.mem_read<uint8_t>(core.pc++);
+    if (second >> 3 == 0b00111) {
+      cycles_taken = srl(core, second & 0x7);
+
+    } else if (second >> 3 == 0b00011) {
+      cycles_taken = rr(core, second & 0x7);
+
+    } else if (second >> 3 == 0b00110) {
+      cycles_taken = swap(core, second & 0x7);
+
+    } else if (second >> 3 == 0b00000) {
+      cycles_taken = rlc(core, second & 0x7);
+
+    } else if (second >> 3 == 0b00001) {
+      cycles_taken = rrc(core, second & 0x7);
+
+    } else if (second >> 3 == 0b00010) {
+      cycles_taken = rl(core, second & 0x7);
+
+    } else if (second >> 3 == 0b00100) {
+      cycles_taken = sla(core, second & 0x7);
+
+    } else if (second >> 3 == 0b00101) {
+      cycles_taken = sra(core, second & 0x7);
+
+    } else if (second >> 6 == 0b01) {
+      cycles_taken = bit(core, second & 0x7, (second >> 3) & 0x7);
+
+    } else if (second >> 6 == 0b10) {
+      cycles_taken = res(core, second & 0x7, (second >> 3) & 0x7);
+
+    } else if (second >> 6 == 0b11) {
+      cycles_taken = set(core, second & 0x7, (second >> 3) & 0x7);
+
+    } else {
+      PANIC("Unhandled bit opcode: 0x{:02X} | 0b{:08b}\n", second, second);
+    }
+
+  } else if (opcode >> 6 == 0b11 && (opcode & 0xf) == 0b0101) {
+    cycles_taken = push_r16(core, opcode >> 4 & 0b11);
+
+  } else if (opcode == 0b1100'1101) {
+    cycles_taken = call_u16(core);
+
+  } else if (opcode == 0b1111'1110) {
+    cycles_taken = cp_value(core, core.mem_read<uint8_t>(core.pc++));
+
+  } else if (opcode == 0b1110'0110) {
+    cycles_taken = and_value(core, core.mem_read<uint8_t>(core.pc++));
+
+  } else if (opcode == 0b1100'0110) {
+    cycles_taken = add_value(core, core.mem_read<uint8_t>(core.pc++));
+
+  } else if (opcode == 0b1101'0110) {
+    cycles_taken = sub_value(core, core.mem_read<uint8_t>(core.pc++));
+
+  } else if (opcode == 0b1110'1110) {
+    cycles_taken = xor_value(core, core.mem_read<uint8_t>(core.pc++));
+
+  } else if (opcode == 0b1100'1110) {
+    cycles_taken = addc_value(core, core.mem_read<uint8_t>(core.pc++));
+
+  } else if (opcode == 0b1111'0110) {
+    cycles_taken = or_value(core, core.mem_read<uint8_t>(core.pc++));
+
+  } else if (opcode == 0b1101'1110) {
+    cycles_taken = subc_value(core, core.mem_read<uint8_t>(core.pc++));
+
+  } else if (opcode >> 6 == 0b11 && (opcode & 0x7) == 0b111) {
+    cycles_taken = rst(core, (opcode >> 3) & 0x7);
+
+  } else {
+    PANIC("Unhandled opcode: 0x{:02X} | 0b{:08b}\n", opcode, opcode);
+  }
+
+  return cycles_taken;
 }

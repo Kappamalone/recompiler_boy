@@ -36,6 +36,8 @@ public:
   // registers
   uint16_t pc;
   uint16_t sp;
+  bool IME;
+  bool req_IME;
   // AF, BC, DE, HL
   std::array<uint16_t, 4> regs{};
   bool get_flag(Regs::Flag f);
