@@ -1,4 +1,5 @@
 #include "interpreter.h"
+#include "common.h"
 #include "core.h"
 #include "fmt/core.h"
 #include <cstdint>
@@ -35,21 +36,21 @@ static constexpr uint16_t& get_group_1(Core& core, int gp1) {
   }
 }
 
-static constexpr uint8_t& get_group_2(Core& core, int gp2) {
+static constexpr uint8_t& get_group_2(Core& core, int gp2, bool write = false) {
   switch (gp2) {
     case 0:
-      return core.mem_byte_reference(core.regs[Regs::BC]);
+      return core.mem_byte_reference(core.regs[Regs::BC], write);
       break;
     case 1:
-      return core.mem_byte_reference(core.regs[Regs::DE]);
+      return core.mem_byte_reference(core.regs[Regs::DE], write);
       break;
     case 2:
       core.regs[Regs::HL]++;
-      return core.mem_byte_reference(core.regs[Regs::HL] - 1);
+      return core.mem_byte_reference(core.regs[Regs::HL] - 1, write);
       break;
     case 3:
       core.regs[Regs::HL]--;
-      return core.mem_byte_reference(core.regs[Regs::HL] + 1);
+      return core.mem_byte_reference(core.regs[Regs::HL] + 1, write);
       break;
     default:
       PANIC("group 2 error!\n");
@@ -77,7 +78,7 @@ static constexpr uint16_t& get_group_3(Core& core, int gp3) {
 }
 
 // NOLINTBEGIN
-static constexpr uint8_t& get_r8(Core& core, int r8) {
+static constexpr uint8_t& get_r8(Core& core, int r8, bool write = false) {
   switch (r8) {
     case 0:
       return reinterpret_cast<uint8_t*>(&core.regs[Regs::BC])[1];
@@ -98,7 +99,7 @@ static constexpr uint8_t& get_r8(Core& core, int r8) {
       return reinterpret_cast<uint8_t*>(&core.regs[Regs::HL])[0];
       break;
     case 6:
-      return core.mem_byte_reference(core.regs[Regs::HL]);
+      return core.mem_byte_reference(core.regs[Regs::HL], write);
     case 7:
       return reinterpret_cast<uint8_t*>(&core.regs[Regs::AF])[1];
       break;
@@ -131,28 +132,41 @@ int GBInterpreter::execute_func(Core& core) {
   int cycles_to_execute = CYCLES_PER_FRAME;
 
   while (cycles_to_execute > 0) {
-    /*
-    append_to_logging(fmt::format(
-        "A: {:02X} F: {:02X} B: {:02X} C: {:02X} D: "
-        "{:02X} E: {:02X} H: {:02X} L: {:02X} SP: {:04X} PC: "
-        "00:{:04X} ({:02X} "
-        "{:02X} {:02X} {:02X})\n",
-        core.regs[Regs::AF] >> 8, core.regs[Regs::AF] & 0xff,
-        core.regs[Regs::BC] >> 8, core.regs[Regs::BC] & 0xff,
-        core.regs[Regs::DE] >> 8, core.regs[Regs::DE] & 0xff,
-        core.regs[Regs::HL] >> 8, core.regs[Regs::HL] & 0xff, core.sp, core.pc,
-        core.mem_read<uint8_t>(core.pc), core.mem_read<uint8_t>(core.pc + 1),
-        core.mem_read<uint8_t>(core.pc + 2),
-        core.mem_read<uint8_t>(core.pc + 3)));
-    */
-    auto opcode = core.mem_read<uint8_t>(core.pc++);
-    int cycles_taken = decode_execute(core, opcode);
-    cycles_to_execute -= cycles_taken;
+    int cycles_taken = 0;
+    if (!core.HALT) {
+      auto opcode = core.mem_read<uint8_t>(core.pc++);
+      cycles_taken = decode_execute(core, opcode);
 
-    // enable interrupt from EI after the next instruction
-    if (core.req_IME && opcode != 0xFB) {
-      core.req_IME = false;
-      core.IME = true;
+      // enable interrupt from EI after the next instruction
+      if (core.req_IME && opcode != 0xFB) {
+        core.req_IME = false;
+        core.IME = true;
+      }
+    } else {
+      cycles_taken = 4;
+    }
+
+    cycles_to_execute -= cycles_taken;
+    core.tick_timers(cycles_taken);
+
+    if (core.IE != 0 && core.IF != 0) {
+      core.HALT = false;
+    }
+
+    // interrupt handling
+    if (core.IME) {
+      for (int i = 0; i < 5; i++) {
+        if (BIT(core.IE, i) && BIT(core.IF, i)) {
+          core.IME = false;
+          core.IF &= ~(1 << i);
+
+          static uint16_t int_vectors[] = {0x40, 0x48, 0x50, 0x58, 0x60};
+          core.sp -= 2;
+          core.mem_write<uint16_t>(core.sp, core.pc);
+
+          core.pc = int_vectors[i];
+        }
+      }
     }
   }
 
@@ -177,35 +191,35 @@ int GBInterpreter::ld_r16_u16(Core& core, int gp1) {
 }
 
 int GBInterpreter::ld_r8_r8(Core& core, int r8_src, int r8_dest) {
-  auto& src = get_r8(core, r8_src);
+  auto& src = get_r8(core, r8_src, true);
   auto& dest = get_r8(core, r8_dest);
   src = dest;
   return 4;
 }
 
 int GBInterpreter::ld_r8_u8(Core& core, int r8_src) {
-  auto& src = get_r8(core, r8_src);
+  auto& src = get_r8(core, r8_src, true);
   auto imm8 = core.mem_read<uint8_t>(core.pc++);
   src = imm8;
   return 4;
 }
 
 int GBInterpreter::ld_a_r16_addr(Core& core, int gp2) {
-  auto& src = get_r8(core, 7);
+  auto& src = get_r8(core, 7, true);
   auto& dest = get_group_2(core, gp2);
   src = dest;
   return 8;
 }
 
 int GBInterpreter::ld_r16_a_addr(Core& core, int gp2) {
-  auto& src = get_group_2(core, gp2);
+  auto& src = get_group_2(core, gp2, true);
   auto& dest = get_r8(core, 7);
   src = dest;
   return 8;
 }
 
 int GBInterpreter::inc_r8(Core& core, int r8) {
-  auto& src = get_r8(core, r8);
+  auto& src = get_r8(core, r8, true);
   core.set_flag(Regs::H, (src & 0xf) == 0xf);
   src++;
   core.set_flag(Regs::Z, src == 0);
@@ -215,7 +229,7 @@ int GBInterpreter::inc_r8(Core& core, int r8) {
 }
 
 int GBInterpreter::dec_r8(Core& core, int r8) {
-  auto& src = get_r8(core, r8);
+  auto& src = get_r8(core, r8, true);
   core.set_flag(Regs::H, (src & 0xf) == 0); // set on borrow...?
   src--;
   core.set_flag(Regs::Z, src == 0);
@@ -247,13 +261,13 @@ int GBInterpreter::ei(Core& core) {
 int GBInterpreter::ld_u16_a(Core& core) {
   auto load_addr = core.mem_read<uint16_t>(core.pc);
   core.pc += 2;
-  core.mem_byte_reference(load_addr) = get_r8(core, 7);
+  core.mem_byte_reference(load_addr, true) = get_r8(core, 7);
   return 16;
 }
 
 int GBInterpreter::ldh_u8_a(Core& core) {
   auto load_addr = core.mem_read<uint8_t>(core.pc++);
-  core.mem_byte_reference(0xff00 + load_addr) = get_r8(core, 7);
+  core.mem_byte_reference(0xff00 + load_addr, true) = get_r8(core, 7);
   return 12;
 }
 
@@ -693,12 +707,12 @@ int GBInterpreter::bit(Core& core, uint8_t r8, uint8_t bit) {
 }
 
 int GBInterpreter::res(Core& core, uint8_t r8, uint8_t bit) {
-  get_r8(core, r8) &= ~(1 << bit);
+  get_r8(core, r8, true) &= ~(1 << bit);
   return 8;
 }
 
 int GBInterpreter::set(Core& core, uint8_t r8, uint8_t bit) {
-  get_r8(core, r8) |= (1 << bit);
+  get_r8(core, r8, true) |= (1 << bit);
   return 8;
 }
 
@@ -748,8 +762,13 @@ int GBInterpreter::ld_a_c(Core& core) {
 }
 
 int GBInterpreter::ld_c_a(Core& core) {
-  core.mem_byte_reference(0xFF00 + get_r8(core, 1)) = get_r8(core, 7);
+  core.mem_byte_reference(0xFF00 + get_r8(core, 1), true) = get_r8(core, 7);
   return 8;
+}
+
+int GBInterpreter::halt(Core& core) {
+  core.HALT = true;
+  return 4;
 }
 
 int GBInterpreter::decode_execute(Core& core, uint16_t opcode) {
@@ -792,6 +811,9 @@ int GBInterpreter::decode_execute(Core& core, uint16_t opcode) {
 
   } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b101) {
     cycles_taken = dec_r8(core, opcode >> 3 & 0x7);
+
+  } else if (opcode == 0b0111'0110) {
+    cycles_taken = halt(core);
 
   } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b110) {
     cycles_taken = ld_r8_u8(core, opcode >> 3 & 0x7);

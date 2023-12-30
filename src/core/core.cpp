@@ -1,4 +1,5 @@
 #include "core.h"
+#include "common.h"
 #include "interpreter.h"
 #include <cstdint>
 #include <fstream>
@@ -23,6 +24,7 @@ Core::Core(const char* bootrom_path, const char* rom_path) {
   sp = 0x00;
   IME = false;
   req_IME = false;
+  HALT = false;
   regs.fill(0);
 
   // memory
@@ -98,7 +100,10 @@ template uint8_t Core::mem_read<uint8_t>(uint32_t addr);
 template uint16_t Core::mem_read<uint16_t>(uint32_t addr);
 template uint32_t Core::mem_read<uint32_t>(uint32_t addr);
 
-uint8_t& Core::mem_byte_reference(uint32_t addr) {
+uint8_t& Core::mem_byte_reference(uint32_t addr, bool write) {
+  // due to me being lazy, the `write` flag controls if the reference
+  // returned is uesd for modification purposes
+
   if (in_between(0x0000, 0x3FFF, addr)) {
     return bank00[addr];
 
@@ -121,6 +126,8 @@ uint8_t& Core::mem_byte_reference(uint32_t addr) {
       case 0xFF02:
         printf("%c", SB);
         return STUB;
+      case 0xFF05:
+        return TIMA;
       case 0xFF07:
         return TAC;
       case 0xFF0F:
@@ -207,8 +214,30 @@ void Core::set_flag(Regs::Flag f, bool value) {
 }
 
 void Core::run_frame() {
-  static int counter = 0;
-
   GBInterpreter::execute_func(*this);
   ppu.draw_bg();
+}
+
+void Core::tick_timers(int ticks) {
+  static int internal_clock = 0;
+  static int hz[] = {1024, 16, 64, 256};
+  int select = hz[TAC & 0x3];
+
+  for (int i = 0; i < ticks; i++) {
+    internal_clock++;
+    if (internal_clock % 256 == 0) {
+      DIV++;
+    }
+
+    if (BIT(TAC, 2)) {
+      if (internal_clock % select == 0) {
+        if (TIMA == 0xFF) {
+          TIMA = TMA;
+          IF |= 1 << 2;
+        } else {
+          TIMA++;
+        }
+      }
+    }
+  }
 }

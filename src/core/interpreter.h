@@ -77,4 +77,5 @@ public:
   static int daa(Core& core);
   static int ld_a_c(Core& core);
   static int ld_c_a(Core& core);
+  static int halt(Core& core);
 };

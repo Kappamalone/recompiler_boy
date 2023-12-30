@@ -38,10 +38,18 @@ public:
   uint16_t sp;
   bool IME;
   bool req_IME;
+  bool HALT;
   // AF, BC, DE, HL
   std::array<uint16_t, 4> regs{};
   bool get_flag(Regs::Flag f);
   void set_flag(Regs::Flag f, bool value);
+
+  // timers
+  uint8_t DIV;
+  uint8_t TIMA;
+  uint8_t TMA;
+  uint8_t TAC;
+  void tick_timers(int ticks);
 
   // memory
   bool bootrom_enabled = true;
@@ -57,7 +65,7 @@ public:
   // memory read/write functions
   template <typename T>
   T mem_read(uint32_t addr);
-  uint8_t& mem_byte_reference(uint32_t addr);
+  uint8_t& mem_byte_reference(uint32_t addr, bool write = false);
   template <typename T>
   void mem_write(uint32_t addr, T value);
 
@@ -68,7 +76,6 @@ public:
   // mmio
   uint8_t LCDC;
   uint8_t SB;
-  uint8_t TAC;
   uint8_t IF;
   uint8_t IE;
   uint8_t LY;
