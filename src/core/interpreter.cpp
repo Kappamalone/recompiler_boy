@@ -68,6 +68,7 @@ static constexpr uint16_t& get_group_3(Core& core, int gp3) {
       return core.regs[Regs::HL];
       break;
     case 3:
+      core.regs[Regs::AF] &= 0xfff0;
       return core.regs[Regs::AF];
       break;
     default:
@@ -191,6 +192,9 @@ int GBInterpreter::execute_func(Core& core) {
     } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b110) {
       cycles_taken = ld_r8_u8(core, opcode >> 3 & 0x7);
 
+    } else if (opcode == 0b0010'0111) {
+      cycles_taken = daa(core);
+
     } else if (opcode == 0b0001'1111) {
       cycles_taken = rra(core);
 
@@ -266,8 +270,20 @@ int GBInterpreter::execute_func(Core& core) {
     } else if (opcode == 0b1100'1001) {
       cycles_taken = ret(core);
 
+    } else if (opcode == 0b1101'1001) {
+      cycles_taken = reti(core);
+
+    } else if (opcode >> 5 == 0b110 && (opcode & 0x7) == 0b010) {
+      cycles_taken = jp_conditional(core, opcode >> 3 & 0b11);
+
+    } else if (opcode == 0b1110'0010) {
+      cycles_taken = ld_c_a(core);
+
     } else if (opcode == 0b1111'1010) {
       cycles_taken = ld_a_u16(core);
+
+    } else if (opcode == 0b1111'0010) {
+      cycles_taken = ld_a_c(core);
 
     } else if (opcode == 0b1100'0011) {
       cycles_taken = jp_u16(core);
@@ -279,33 +295,42 @@ int GBInterpreter::execute_func(Core& core) {
       cycles_taken = call_conditional(core, opcode >> 3 & 0b11);
 
     } else if (opcode == 0xCB) {
-      const auto bit = core.mem_read<uint8_t>(core.pc++);
-      if (bit >> 3 == 0b00111) {
-        cycles_taken = srl(core, bit & 0x7);
+      const auto second = core.mem_read<uint8_t>(core.pc++);
+      if (second >> 3 == 0b00111) {
+        cycles_taken = srl(core, second & 0x7);
 
-      } else if (bit >> 3 == 0b00011) {
-        cycles_taken = rr(core, bit & 0x7);
+      } else if (second >> 3 == 0b00011) {
+        cycles_taken = rr(core, second & 0x7);
 
-      } else if (bit >> 3 == 0b00110) {
-        cycles_taken = swap(core, bit & 0x7);
+      } else if (second >> 3 == 0b00110) {
+        cycles_taken = swap(core, second & 0x7);
 
-      } else if (bit >> 3 == 0b00000) {
-        cycles_taken = rlc(core, bit & 0x7);
+      } else if (second >> 3 == 0b00000) {
+        cycles_taken = rlc(core, second & 0x7);
 
-      } else if (bit >> 3 == 0b00001) {
-        cycles_taken = rrc(core, bit & 0x7);
+      } else if (second >> 3 == 0b00001) {
+        cycles_taken = rrc(core, second & 0x7);
 
-      } else if (bit >> 3 == 0b00010) {
-        cycles_taken = rl(core, bit & 0x7);
+      } else if (second >> 3 == 0b00010) {
+        cycles_taken = rl(core, second & 0x7);
 
-      } else if (bit >> 3 == 0b00100) {
-        cycles_taken = sla(core, bit & 0x7);
+      } else if (second >> 3 == 0b00100) {
+        cycles_taken = sla(core, second & 0x7);
 
-      } else if (bit >> 3 == 0b00101) {
-        cycles_taken = sra(core, bit & 0x7);
+      } else if (second >> 3 == 0b00101) {
+        cycles_taken = sra(core, second & 0x7);
+
+      } else if (second >> 6 == 0b01) {
+        cycles_taken = bit(core, second & 0x7, (second >> 3) & 0x7);
+
+      } else if (second >> 6 == 0b10) {
+        cycles_taken = res(core, second & 0x7, (second >> 3) & 0x7);
+
+      } else if (second >> 6 == 0b11) {
+        cycles_taken = set(core, second & 0x7, (second >> 3) & 0x7);
 
       } else {
-        PANIC("Unhandled bit opcode: 0x{:02X} | 0b{:08b}\n", bit, bit);
+        PANIC("Unhandled bit opcode: 0x{:02X} | 0b{:08b}\n", second, second);
       }
 
     } else if (opcode >> 6 == 0b11 && (opcode & 0xf) == 0b0101) {
@@ -338,8 +363,11 @@ int GBInterpreter::execute_func(Core& core) {
     } else if (opcode == 0b1101'1110) {
       cycles_taken = subc_value(core, core.mem_read<uint8_t>(core.pc++));
 
+    } else if (opcode >> 6 == 0b11 && (opcode & 0x7) == 0b111) {
+      cycles_taken = rst(core, (opcode >> 3) & 0x7);
+
     } else {
-      PRINT("Unhandled opcode: 0x{:02X} | 0b{:08b}\n", opcode, opcode);
+      PANIC("Unhandled opcode: 0x{:02X} | 0b{:08b}\n", opcode, opcode);
     }
 
     cycles_to_execute -= cycles_taken;
@@ -455,6 +483,24 @@ int GBInterpreter::call_u16(Core& core) {
 int GBInterpreter::ret(Core& core) {
   auto jump_addr = core.mem_read<uint16_t>(core.sp);
   core.sp += 2;
+  core.pc = jump_addr;
+  return 16;
+}
+
+int GBInterpreter::reti(Core& core) {
+  // FIXME: enable interrupts
+  auto jump_addr = core.mem_read<uint16_t>(core.sp);
+  core.sp += 2;
+  core.pc = jump_addr;
+  return 16;
+}
+
+int GBInterpreter::rst(Core& core, int vec) {
+  auto jump_addr = vec << 3;
+
+  core.sp -= 2;
+  core.mem_write<uint16_t>(core.sp, core.pc);
+
   core.pc = jump_addr;
   return 16;
 }
@@ -849,4 +895,71 @@ int GBInterpreter::ld_hl_sp_i8(Core& core) {
   core.set_flag(Regs::Flag::Z, false);
   core.set_flag(Regs::Flag::N, false);
   return 12;
+}
+
+int GBInterpreter::bit(Core& core, uint8_t r8, uint8_t bit) {
+  core.set_flag(Regs::Flag::Z, !((get_r8(core, r8) >> bit) & 1));
+  core.set_flag(Regs::Flag::N, false);
+  core.set_flag(Regs::Flag::H, true);
+  return 8;
+}
+
+int GBInterpreter::res(Core& core, uint8_t r8, uint8_t bit) {
+  get_r8(core, r8) &= ~(1 << bit);
+  return 8;
+}
+
+int GBInterpreter::set(Core& core, uint8_t r8, uint8_t bit) {
+  get_r8(core, r8) |= (1 << bit);
+  return 8;
+}
+
+int GBInterpreter::jp_conditional(Core& core, int condition) {
+  auto jump_addr = core.mem_read<uint16_t>(core.pc);
+  core.pc += 2;
+  if (condition_table(core, condition)) {
+    core.pc = jump_addr;
+    return 16;
+  }
+  return 12;
+}
+
+int GBInterpreter::daa(Core& core) {
+  auto& acc = get_r8(core, 7);
+  if (!core.get_flag(Regs::Flag::N)) {
+    // previous instruction was addition
+
+    if (core.get_flag(Regs::Flag::C) || acc > 0x99) {
+      acc += 0x60;
+      core.set_flag(Regs::Flag::C, true);
+    }
+
+    if (core.get_flag(Regs::Flag::H) || (acc & 0x0F) > 0x09) {
+      acc += 0x06;
+    }
+  } else {
+    // previous instruction was subtraction
+
+    if (core.get_flag(Regs::Flag::C)) {
+      acc -= 0x60;
+      core.set_flag(Regs::Flag::C, true);
+    }
+
+    if (core.get_flag(Regs::Flag::H)) {
+      acc -= 0x06;
+    }
+  }
+  core.set_flag(Regs::Flag::Z, acc == 0);
+  core.set_flag(Regs::Flag::H, false);
+  return 4;
+}
+
+int GBInterpreter::ld_a_c(Core& core) {
+  get_r8(core, 7) = core.mem_read<uint8_t>(0xFF00 + get_r8(core, 1));
+  return 8;
+}
+
+int GBInterpreter::ld_c_a(Core& core) {
+  core.mem_byte_reference(0xFF00 + get_r8(core, 1)) = get_r8(core, 7);
+  return 8;
 }

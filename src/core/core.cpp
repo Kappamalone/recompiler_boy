@@ -86,6 +86,8 @@ T Core::mem_read(uint32_t addr) {
     return *(T*)(&vram[addr - 0x8000]);
   } else if (in_between(0xC000, 0xDFFF, addr)) {
     return *(T*)(&wram[addr - 0xC000]);
+  } else if (in_between(0xFF80, 0xFFFE, addr)) {
+    return *(T*)(&hram[addr - 0xFF80]);
   } else {
     PANIC("Unknown memory read at 0x{:08X}\n", addr);
   }
@@ -154,6 +156,8 @@ void Core::mem_write(uint32_t addr, T value) {
     *(T*)(&bank00[addr]) = value;
   } else if (in_between(0xC000, 0xDFFF, addr)) {
     *(T*)(&wram[addr - 0xC000]) = value;
+  } else if (in_between(0xFF80, 0xFFFE, addr)) {
+    *(T*)(&hram[addr - 0xFF80]) = value;
   } else {
     PANIC("Unknown memory write at 0x{:08X}\n", addr);
   }

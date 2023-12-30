@@ -28,6 +28,8 @@ public:
   static int call_u16(Core& core);
   static int jr_unconditional(Core& core);
   static int ret(Core& core);
+  static int reti(Core& core);
+  static int rst(Core& core, int vec);
   static int push_r16(Core& core, int gp3);
   static int pop_r16(Core& core, int gp3);
   static int inc_r16(Core& core, int gp1);
@@ -66,4 +68,11 @@ public:
   static int ld_sp_hl(Core& core);
   static int add_sp_i8(Core& core);
   static int ld_hl_sp_i8(Core& core);
+  static int bit(Core& core, uint8_t r8, uint8_t bit);
+  static int res(Core& core, uint8_t r8, uint8_t bit);
+  static int set(Core& core, uint8_t r8, uint8_t bit);
+  static int jp_conditional(Core& core, int condition);
+  static int daa(Core& core);
+  static int ld_a_c(Core& core);
+  static int ld_c_a(Core& core);
 };
