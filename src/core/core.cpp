@@ -214,7 +214,14 @@ void Core::set_flag(Regs::Flag f, bool value) {
 }
 
 void Core::run_frame() {
-  GBInterpreter::execute_func(*this);
+  if (!HALT) {
+    GBInterpreter::execute_func(*this);
+  } else {
+    tick_timers(CYCLES_PER_FRAME);
+    if (IE != 0 && IF != 0) {
+      HALT = false;
+    }
+  }
   ppu.draw_bg();
 }
 

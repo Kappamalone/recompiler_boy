@@ -128,30 +128,26 @@ static constexpr bool condition_table(Core& core, int num) {
   }
 }
 
+// TODO: this execute func should be in core
 int GBInterpreter::execute_func(Core& core) {
   int cycles_to_execute = CYCLES_PER_FRAME;
 
   while (cycles_to_execute > 0) {
-    int cycles_taken = 0;
-    if (!core.HALT) {
-      auto opcode = core.mem_read<uint8_t>(core.pc++);
-      cycles_taken = decode_execute(core, opcode);
-
-      // enable interrupt from EI after the next instruction
-      if (core.req_IME && opcode != 0xFB) {
-        core.req_IME = false;
-        core.IME = true;
-      }
-    } else {
-      cycles_taken = 4;
+    if (core.HALT) {
+      return 0;
     }
 
+    int cycles_taken = 0;
+    auto opcode = core.mem_read<uint8_t>(core.pc++);
+    cycles_taken = decode_execute(core, opcode);
+
+    // enable interrupt from EI after the next instruction
+    if (core.req_IME && opcode != 0xFB) {
+      core.req_IME = false;
+      core.IME = true;
+    }
     cycles_to_execute -= cycles_taken;
     core.tick_timers(cycles_taken);
-
-    if (core.IE != 0 && core.IF != 0) {
-      core.HALT = false;
-    }
 
     // interrupt handling
     if (core.IME) {
