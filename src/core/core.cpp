@@ -119,6 +119,9 @@ uint8_t& Core::mem_byte_reference(uint32_t addr, bool write) {
   } else if (in_between(0xFF80, 0xFFFE, addr)) {
     return hram[addr - 0xFF80];
 
+  } else if (in_between(0xFE00, 0xFE9F, addr)) {
+    return oam[addr - 0xFE00];
+
   } else if (in_between(0xFF00, 0xFFFF, addr)) {
     switch (addr) {
       case 0xFF01:
@@ -140,15 +143,27 @@ uint8_t& Core::mem_byte_reference(uint32_t addr, bool write) {
         return STUB;
       case 0xFF40:
         return LCDC;
+      case 0xFF41:
+        return STUB;
       case 0xFF42:
         return STUB;
       case 0xFF43:
         return STUB;
+      case 0xFF45:
+        return STUB;
       case 0xFF47:
         return BGP;
+      case 0xFF48:
+        return STUB;
+      case 0xFF49:
+        return STUB;
       case 0xFF44:
         LY = 0x90;
         return LY;
+      case 0xFF4A:
+        return STUB;
+      case 0xFF4B:
+        return STUB;
       case 0xFFFF:
         return IE;
       default:
