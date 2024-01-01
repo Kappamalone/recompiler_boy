@@ -1,6 +1,6 @@
 mkdir -p build && cd build
-cmake -Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE="$1"  ..
+cmake -Wno-dev -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE="DEBUG"  ..
 ln -rsf compile_commands.json ..
 ninja
-./TEMPLATE
+./TEMPLATE $1
 cd ..

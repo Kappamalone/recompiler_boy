@@ -6,6 +6,7 @@ set(SOURCES
     interpreter.h
     interpreter.cpp
     ppu.cpp
+    config.h
 )
 
 add_library(core ${SOURCES})

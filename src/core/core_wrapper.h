@@ -18,10 +18,10 @@ private:
   std::function<void()> ping_ui_thread;
 
 public:
-  CoreWrapper(std::function<void()> start, std::function<void()> end)
-      : core("", "../roms/gb-test-roms/cpu_instrs/individual/"
-                 "02-interrupts.gb"),
-        wait_for_ui_thread(std::move(start)), ping_ui_thread(std::move(end)) {}
+  CoreWrapper(Config config, std::function<void()> start,
+              std::function<void()> end)
+      : core(config), wait_for_ui_thread(std::move(start)),
+        ping_ui_thread(std::move(end)) {}
 
   void run() {
     using frame_period = std::chrono::duration<long long, std::ratio<1, 60>>;

@@ -14,7 +14,7 @@ static void create_logging_file(const std::string& filename) {
   }
 }
 
-Core::Core(const char* bootrom_path, const char* rom_path) {
+Core::Core(Config config) {
   fb.pixels.resize(fb.width * fb.height * 4);
   // logging:
   create_logging_file("../../logging.txt");
@@ -46,8 +46,8 @@ Core::Core(const char* bootrom_path, const char* rom_path) {
   LY = 0;
   SB = 0;
 
-  load_rom(rom_path);
-  if (strcmp(bootrom_path, "") == 0) {
+  load_rom(config.rom_path);
+  if (config.bootrom_path == nullptr) {
     // skip bootrom initialisation
     bootrom_enabled = false;
     pc = 0x100;
@@ -58,7 +58,7 @@ Core::Core(const char* bootrom_path, const char* rom_path) {
     regs[3] = 0x014d;
     // TODO: lcdc and palette
   } else {
-    load_bootrom(bootrom_path);
+    load_bootrom(config.bootrom_path);
   }
 }
 

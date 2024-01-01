@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "config.h"
 #include <array>
 #include <cstdint>
 
@@ -83,7 +84,7 @@ public:
   uint8_t STUB;
 
 public:
-  Core(const char* bootrom_path, const char* rom_path);
+  Core(Config config);
   void run_frame();
   [[nodiscard]] const auto& get_fb_ref() const { return fb; }
 };
