@@ -16,5 +16,6 @@ int main(int argc, char** argv) {
 
   auto gui = Frontend(config);
   gui.run();
+
   return 0;
 }

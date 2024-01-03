@@ -5,13 +5,6 @@
 #include <array>
 #include <cstdint>
 
-// For reference:
-// The bare minimum to be able to render the most basic rom is to
-// -> Load one of Blaarg's cpu tests
-// -> Skip the bootrom, initialise registers are necessary
-// -> Implement the instruction execution
-// -> Render bg tiles
-
 namespace Regs {
 enum Regs { AF = 0, BC, DE, HL };
 enum Flag { Z, N, H, C };
@@ -29,8 +22,13 @@ public:
     Core& core;
     explicit PPU(Core& core) : core(core) {}
 
+    int dot_clock;
+
+    void tick(int cycles);
+
     void draw_bg();
     void draw_scanline();
+    void draw_frame();
   };
   PPU ppu{*this};
 
@@ -51,6 +49,7 @@ public:
   uint8_t TMA;
   uint8_t TAC;
   void tick_timers(int ticks);
+  void handle_interrupts();
 
   // memory
   bool bootrom_enabled = true;
@@ -80,6 +79,8 @@ public:
   uint8_t IF;
   uint8_t IE;
   uint8_t LY;
+  uint8_t SCX;
+  uint8_t SCY;
   uint8_t BGP;
   uint8_t STUB;
 

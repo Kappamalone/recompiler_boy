@@ -6,7 +6,7 @@ void Core::PPU::draw_scanline() {
     return;
   };
 
-  draw_bg();
+  draw_frame();
 }
 
 void Core::PPU::draw_bg() {
@@ -23,13 +23,17 @@ void Core::PPU::draw_bg() {
   const uint16_t tiledata_start = BIT(core.LCDC, 4) ? 0x8000 : 0x8800;
   const bool signed_addressing = BIT(core.LCDC, 4);
 
-  for (int y = 0; y < 144; y++) {
-    for (int x = 0; x < 160; x++) {
-      int row = y % 8;
-      int tilemap_offset = (y / 8) * 32;
+  for (uint8_t y = 0; y < 144; y++) {
+    for (uint8_t x = 0; x < 160; x++) {
+      // bg specific
+      int xcoord_offset = x + core.SCX;
+      int ycoord_offset = y + core.SCY;
 
-      int tile = x / 8;
-      int col = x % 8;
+      int row = ycoord_offset % 8;
+      int tilemap_offset = (ycoord_offset / 8) * 32;
+
+      int tile = xcoord_offset / 8;
+      int col = xcoord_offset % 8;
 
       auto tile_num =
           core.mem_read<uint8_t>(tilemap_start + tilemap_offset + tile);
@@ -58,3 +62,5 @@ void Core::PPU::draw_bg() {
     }
   }
 }
+
+void Core::PPU::draw_frame() { draw_bg(); }

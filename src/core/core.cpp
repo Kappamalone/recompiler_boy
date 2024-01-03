@@ -71,7 +71,13 @@ void Core::load_rom(const char* path) {
   file.read((char*)(bank01.data()), sizeof(uint8_t) * 0x4000);
 }
 
-void Core::load_bootrom(const char* path) {}
+void Core::load_bootrom(const char* path) {
+  std::ifstream file(path, std::ios::binary);
+  if (!file.is_open()) {
+    PANIC("Error opening file: {}\n", path);
+  }
+  file.read((char*)(bank00.data()), sizeof(uint8_t) * 0x100);
+}
 
 static constexpr bool in_between(uint32_t start, uint32_t end, uint32_t addr) {
   return addr >= start && addr <= end;
@@ -133,6 +139,14 @@ uint8_t& Core::mem_byte_reference(uint32_t addr, bool write) {
         return TIMA;
       case 0xFF07:
         return TAC;
+      case 0xFF11:
+      case 0xFF12:
+      case 0xFF13:
+      case 0xFF14:
+        return STUB;
+      case 0xFF50:
+        // TODO: this should unload the bootrom
+        return STUB;
       case 0xFF0F:
         return IF;
       case 0xFF24:
@@ -146,9 +160,9 @@ uint8_t& Core::mem_byte_reference(uint32_t addr, bool write) {
       case 0xFF41:
         return STUB;
       case 0xFF42:
-        return STUB;
+        return SCY;
       case 0xFF43:
-        return STUB;
+        return SCX;
       case 0xFF45:
         return STUB;
       case 0xFF47:
@@ -158,7 +172,6 @@ uint8_t& Core::mem_byte_reference(uint32_t addr, bool write) {
       case 0xFF49:
         return STUB;
       case 0xFF44:
-        LY = 0x90;
         return LY;
       case 0xFF4A:
         return STUB;
@@ -228,18 +241,6 @@ void Core::set_flag(Regs::Flag f, bool value) {
   }
 }
 
-void Core::run_frame() {
-  if (!HALT) {
-    GBInterpreter::execute_func(*this);
-  } else {
-    tick_timers(CYCLES_PER_FRAME);
-    if (IE != 0 && IF != 0) {
-      HALT = false;
-    }
-  }
-  ppu.draw_bg();
-}
-
 void Core::tick_timers(int ticks) {
   static int internal_clock = 0;
   static int hz[] = {1024, 16, 64, 256};
@@ -262,4 +263,52 @@ void Core::tick_timers(int ticks) {
       }
     }
   }
+}
+
+void Core::handle_interrupts() {
+  if (IME) {
+    for (int i = 0; i < 5; i++) {
+      if (BIT(IE, i) && BIT(IF, i)) {
+        IME = false;
+        IF &= ~(1 << i);
+
+        static uint16_t int_vectors[] = {0x40, 0x48, 0x50, 0x58, 0x60};
+        sp -= 2;
+        mem_write<uint16_t>(sp, pc);
+
+        pc = int_vectors[i];
+      }
+    }
+  }
+}
+
+void Core::run_frame() {
+  // the amount of cpu cycles to execute per frame
+  // all other components are synced to this
+  int cycles_to_execute = CYCLES_PER_FRAME;
+
+  while (cycles_to_execute > 0) {
+    int cycles_taken = 0;
+
+    if (!HALT) {
+      auto opcode = mem_read<uint8_t>(pc++);
+      cycles_taken = GBInterpreter::decode_execute(*this, opcode);
+      // TODO: tick ppu
+
+      // enable interrupt from EI after the next instruction
+      if (req_IME && opcode != 0xFB) {
+        req_IME = false;
+        IME = true;
+      }
+    } else {
+      cycles_taken = 4;
+    }
+
+    tick_timers(cycles_taken);
+    handle_interrupts();
+
+    cycles_to_execute -= cycles_taken;
+  }
+
+  ppu.draw_bg();
 }

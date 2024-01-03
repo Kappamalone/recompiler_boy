@@ -4,5 +4,5 @@ ln -rsf compile_commands.json ..
 ninja
 cp ./TEMPLATE ..
 cd ..
-./TEMPLATE $1
+./TEMPLATE $1 $2
 rm ./TEMPLATE
