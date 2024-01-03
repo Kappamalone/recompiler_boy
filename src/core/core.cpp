@@ -188,7 +188,7 @@ uint8_t& Core::handle_mmio(uint32_t addr) {
     case 0xFF40:
       return LCDC;
     case 0xFF41:
-      return STUB;
+      return STAT;
     case 0xFF42:
       return SCY;
     case 0xFF43:
@@ -318,6 +318,7 @@ void Core::run_frame() {
       cycles_taken = 4;
     }
 
+    ppu.tick(cycles_taken);
     tick_timers(cycles_taken);
     handle_interrupts();
 

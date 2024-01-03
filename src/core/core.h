@@ -20,9 +20,14 @@ public:
 
   using PPU = struct PPU {
     Core& core;
-    explicit PPU(Core& core) : core(core) {}
+    explicit PPU(Core& core) : core(core) {
+      // TODO: lcdstat
+    }
 
-    int dot_clock;
+    enum class PPUMode { OAMScan, DrawingPixels, HBlank, VBlank };
+
+    PPUMode mode = Core::PPU::PPUMode::OAMScan;
+    int dot_clock = 0;
 
     void tick(int cycles);
 
@@ -76,6 +81,7 @@ public:
 
   // mmio
   uint8_t LCDC;
+  uint8_t STAT;
   uint8_t SB;
   uint8_t IF;
   uint8_t IE;
