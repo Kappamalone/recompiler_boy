@@ -68,6 +68,7 @@ public:
   uint8_t& mem_byte_reference(uint32_t addr, bool write = false);
   template <typename T>
   void mem_write(uint32_t addr, T value);
+  uint8_t& handle_mmio(uint32_t addr);
 
   // cartridge functions
   void load_bootrom(const char* path);

@@ -45,6 +45,7 @@ Core::Core(Config config) {
   IE = 0;
   LY = 0;
   SB = 0;
+  TMA = 0;
 
   load_rom(config.rom_path);
   if (config.bootrom_path == nullptr) {
@@ -98,6 +99,8 @@ T Core::mem_read(uint32_t addr) {
     return *(T*)(&wram[addr - 0xC000]);
   } else if (in_between(0xFF80, 0xFFFE, addr)) {
     return *(T*)(&hram[addr - 0xFF80]);
+  } else if (in_between(0xFF00, 0xFFFF, addr)) {
+    return handle_mmio(addr);
   } else {
     PANIC("Unknown memory read at 0x{:08X}\n", addr);
   }
@@ -129,59 +132,7 @@ uint8_t& Core::mem_byte_reference(uint32_t addr, bool write) {
     return oam[addr - 0xFE00];
 
   } else if (in_between(0xFF00, 0xFFFF, addr)) {
-    switch (addr) {
-      case 0xFF01:
-        return SB;
-      case 0xFF02:
-        printf("%c", SB);
-        return STUB;
-      case 0xFF05:
-        return TIMA;
-      case 0xFF07:
-        return TAC;
-      case 0xFF11:
-      case 0xFF12:
-      case 0xFF13:
-      case 0xFF14:
-        return STUB;
-      case 0xFF50:
-        // TODO: this should unload the bootrom
-        return STUB;
-      case 0xFF0F:
-        return IF;
-      case 0xFF24:
-        return STUB;
-      case 0xFF25:
-        return STUB;
-      case 0xFF26:
-        return STUB;
-      case 0xFF40:
-        return LCDC;
-      case 0xFF41:
-        return STUB;
-      case 0xFF42:
-        return SCY;
-      case 0xFF43:
-        return SCX;
-      case 0xFF45:
-        return STUB;
-      case 0xFF47:
-        return BGP;
-      case 0xFF48:
-        return STUB;
-      case 0xFF49:
-        return STUB;
-      case 0xFF44:
-        return LY;
-      case 0xFF4A:
-        return STUB;
-      case 0xFF4B:
-        return STUB;
-      case 0xFFFF:
-        return IE;
-      default:
-        PANIC("Unknown memory reference at 0x{:08X}\n", addr);
-    }
+    return handle_mmio(addr);
   } else {
     PANIC("Unknown memory reference at 0x{:08X}\n", addr);
   }
@@ -202,6 +153,66 @@ void Core::mem_write(uint32_t addr, T value) {
 template void Core::mem_write<uint8_t>(uint32_t addr, uint8_t value);
 template void Core::mem_write<uint16_t>(uint32_t addr, uint16_t value);
 template void Core::mem_write<uint32_t>(uint32_t addr, uint32_t value);
+
+uint8_t& Core::handle_mmio(uint32_t addr) {
+  switch (addr) {
+    case 0xFF00:
+      return STUB;
+    case 0xFF01:
+      return SB;
+    case 0xFF02:
+      printf("%c", SB);
+      return STUB;
+    case 0xFF05:
+      return TIMA;
+    case 0xFF06:
+      return TMA;
+    case 0xFF07:
+      return TAC;
+    case 0xFF11:
+    case 0xFF12:
+    case 0xFF13:
+    case 0xFF14:
+      return STUB;
+    case 0xFF50:
+      // TODO: this should unload the bootrom
+      return STUB;
+    case 0xFF0F:
+      return IF;
+    case 0xFF24:
+      return STUB;
+    case 0xFF25:
+      return STUB;
+    case 0xFF26:
+      return STUB;
+    case 0xFF40:
+      return LCDC;
+    case 0xFF41:
+      return STUB;
+    case 0xFF42:
+      return SCY;
+    case 0xFF43:
+      return SCX;
+    case 0xFF45:
+      return STUB;
+    case 0xFF47:
+      return BGP;
+    case 0xFF48:
+      return STUB;
+    case 0xFF49:
+      return STUB;
+    case 0xFF44:
+      return LY;
+    case 0xFF4A:
+      return STUB;
+    case 0xFF4B:
+      return STUB;
+    case 0xFFFF:
+      return IE;
+    default:
+      PANIC("Unknown memory reference at 0x{:08X}\n", addr);
+  }
+}
 
 bool Core::get_flag(Regs::Flag f) {
   switch (f) {
@@ -301,6 +312,9 @@ void Core::run_frame() {
         IME = true;
       }
     } else {
+      if (IE != 0 && IF != 0) {
+        HALT = false;
+      }
       cycles_taken = 4;
     }
 

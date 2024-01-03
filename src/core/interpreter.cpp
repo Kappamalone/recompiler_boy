@@ -128,53 +128,12 @@ static constexpr bool condition_table(Core& core, int num) {
   }
 }
 
-// TODO: this execute func should be in core
-int GBInterpreter::execute_func(Core& core) {
-  int cycles_to_execute = CYCLES_PER_FRAME;
-
-  while (cycles_to_execute > 0) {
-    if (core.HALT) {
-      return 0;
-    }
-
-    int cycles_taken = 0;
-    auto opcode = core.mem_read<uint8_t>(core.pc++);
-    cycles_taken = decode_execute(core, opcode);
-
-    // enable interrupt from EI after the next instruction
-    if (core.req_IME && opcode != 0xFB) {
-      core.req_IME = false;
-      core.IME = true;
-    }
-    cycles_to_execute -= cycles_taken;
-    core.tick_timers(cycles_taken);
-
-    // interrupt handling
-    if (core.IME) {
-      for (int i = 0; i < 5; i++) {
-        if (BIT(core.IE, i) && BIT(core.IF, i)) {
-          core.IME = false;
-          core.IF &= ~(1 << i);
-
-          static uint16_t int_vectors[] = {0x40, 0x48, 0x50, 0x58, 0x60};
-          core.sp -= 2;
-          core.mem_write<uint16_t>(core.sp, core.pc);
-
-          core.pc = int_vectors[i];
-        }
-      }
-    }
-  }
-
-  return 0;
-}
-
 int GBInterpreter::jp_u16(Core& core) {
   auto jump_addr = core.mem_read<uint16_t>(core.pc);
   core.pc += 2;
   core.pc = jump_addr;
 
-  return 16;
+  return 0;
 }
 
 int GBInterpreter::ld_r16_u16(Core& core, int gp1) {
@@ -183,35 +142,35 @@ int GBInterpreter::ld_r16_u16(Core& core, int gp1) {
 
   get_group_1(core, gp1) = imm16;
 
-  return 12;
+  return 0;
 }
 
 int GBInterpreter::ld_r8_r8(Core& core, int r8_src, int r8_dest) {
   auto& src = get_r8(core, r8_src, true);
   auto& dest = get_r8(core, r8_dest);
   src = dest;
-  return 4;
+  return 0;
 }
 
 int GBInterpreter::ld_r8_u8(Core& core, int r8_src) {
   auto& src = get_r8(core, r8_src, true);
   auto imm8 = core.mem_read<uint8_t>(core.pc++);
   src = imm8;
-  return 4;
+  return 0;
 }
 
 int GBInterpreter::ld_a_r16_addr(Core& core, int gp2) {
   auto& src = get_r8(core, 7, true);
   auto& dest = get_group_2(core, gp2);
   src = dest;
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::ld_r16_a_addr(Core& core, int gp2) {
   auto& src = get_group_2(core, gp2, true);
   auto& dest = get_r8(core, 7);
   src = dest;
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::inc_r8(Core& core, int r8) {
@@ -221,7 +180,7 @@ int GBInterpreter::inc_r8(Core& core, int r8) {
   core.set_flag(Regs::Z, src == 0);
   core.set_flag(Regs::N, false);
 
-  return 4;
+  return 0;
 }
 
 int GBInterpreter::dec_r8(Core& core, int r8) {
@@ -231,40 +190,41 @@ int GBInterpreter::dec_r8(Core& core, int r8) {
   core.set_flag(Regs::Z, src == 0);
   core.set_flag(Regs::N, true);
 
-  return 4;
+  return 0;
 }
 
+// MARK
 int GBInterpreter::jr_conditional(Core& core, int condition) {
   auto rel_signed_offest = (int8_t)core.mem_read<uint8_t>(core.pc++);
   if (condition_table(core, condition)) {
     core.pc += rel_signed_offest;
-    return 12;
+    return 4;
   }
 
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::di(Core& core) {
   core.IME = false;
-  return 4;
+  return 0;
 }
 
 int GBInterpreter::ei(Core& core) {
   core.req_IME = true;
-  return 4;
+  return 0;
 }
 
 int GBInterpreter::ld_u16_a(Core& core) {
   auto load_addr = core.mem_read<uint16_t>(core.pc);
   core.pc += 2;
   core.mem_byte_reference(load_addr, true) = get_r8(core, 7);
-  return 16;
+  return 0;
 }
 
 int GBInterpreter::ldh_u8_a(Core& core) {
   auto load_addr = core.mem_read<uint8_t>(core.pc++);
   core.mem_byte_reference(0xff00 + load_addr, true) = get_r8(core, 7);
-  return 12;
+  return 0;
 }
 
 int GBInterpreter::call_u16(Core& core) {
@@ -275,14 +235,14 @@ int GBInterpreter::call_u16(Core& core) {
   core.mem_write<uint16_t>(core.sp, core.pc);
 
   core.pc = jump_addr;
-  return 24;
+  return 0;
 }
 
 int GBInterpreter::ret(Core& core) {
   auto jump_addr = core.mem_read<uint16_t>(core.sp);
   core.sp += 2;
   core.pc = jump_addr;
-  return 16;
+  return 0;
 }
 
 int GBInterpreter::reti(Core& core) {
@@ -290,7 +250,7 @@ int GBInterpreter::reti(Core& core) {
   core.sp += 2;
   core.pc = jump_addr;
   core.IME = true; // no need to wait a cycle here I guess?
-  return 16;
+  return 0;
 }
 
 int GBInterpreter::rst(Core& core, int vec) {
@@ -300,36 +260,36 @@ int GBInterpreter::rst(Core& core, int vec) {
   core.mem_write<uint16_t>(core.sp, core.pc);
 
   core.pc = jump_addr;
-  return 16;
+  return 0;
 }
 
 int GBInterpreter::jr_unconditional(Core& core) {
   auto rel_signed_offest = (int8_t)core.mem_read<uint8_t>(core.pc++);
   core.pc += rel_signed_offest;
-  return 12;
+  return 0;
 }
 
 int GBInterpreter::push_r16(Core& core, int gp3) {
   core.sp -= 2;
   core.mem_write<uint16_t>(core.sp, get_group_3(core, gp3));
 
-  return 16;
+  return 0;
 }
 
 int GBInterpreter::pop_r16(Core& core, int gp3) {
   get_group_3(core, gp3) = core.mem_read<uint16_t>(core.sp);
   core.sp += 2;
-  return 12;
+  return 0;
 }
 
 int GBInterpreter::inc_r16(Core& core, int gp1) {
   get_group_1(core, gp1)++;
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::dec_r16(Core& core, int gp1) {
   get_group_1(core, gp1)--;
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::or_a_value(Core& core, uint8_t value) {
@@ -339,13 +299,13 @@ int GBInterpreter::or_a_value(Core& core, uint8_t value) {
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
   core.set_flag(Regs::Flag::C, false);
-  return 4;
+  return 0;
 }
 
 int GBInterpreter::ldh_a_u8(Core& core) {
   auto load_addr = core.mem_read<uint8_t>(core.pc++);
   get_r8(core, 7) = core.mem_byte_reference(0xff00 + load_addr);
-  return 12;
+  return 0;
 }
 
 int GBInterpreter::cp_value(Core& core, uint8_t value) {
@@ -355,14 +315,14 @@ int GBInterpreter::cp_value(Core& core, uint8_t value) {
   core.set_flag(Regs::Flag::H, (uint8_t)((temp & 0xf) - (value & 0xf)) > 0xf);
   core.set_flag(Regs::Flag::C,
                 (uint16_t)((uint16_t)temp - (uint16_t)value) > 0xff);
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::ld_a_u16(Core& core) {
   auto value = core.mem_read<uint8_t>(core.mem_read<uint16_t>(core.pc));
   core.pc += 2;
   get_r8(core, 7) = value;
-  return 16;
+  return 0;
 }
 
 int GBInterpreter::and_value(Core& core, uint8_t value) {
@@ -373,9 +333,10 @@ int GBInterpreter::and_value(Core& core, uint8_t value) {
   core.set_flag(Regs::Flag::H, true);
   core.set_flag(Regs::Flag::C, false);
 
-  return 4;
+  return 0;
 }
 
+// MARK
 int GBInterpreter::call_conditional(Core& core, int condition) {
   auto jump_addr = core.mem_read<uint16_t>(core.pc);
   core.pc += 2;
@@ -385,9 +346,9 @@ int GBInterpreter::call_conditional(Core& core, int condition) {
     core.mem_write<uint16_t>(core.sp, core.pc);
 
     core.pc = jump_addr;
-    return 24;
+    return 12;
   }
-  return 12;
+  return 0;
 }
 
 int GBInterpreter::xor_value(Core& core, uint8_t value) {
@@ -398,7 +359,7 @@ int GBInterpreter::xor_value(Core& core, uint8_t value) {
   core.set_flag(Regs::Flag::H, false);
   core.set_flag(Regs::Flag::C, false);
 
-  return 4;
+  return 0;
 }
 
 int GBInterpreter::add_value(Core& core, uint8_t value) {
@@ -410,7 +371,7 @@ int GBInterpreter::add_value(Core& core, uint8_t value) {
   core.set_flag(Regs::Flag::Z, acc == 0);
   core.set_flag(Regs::Flag::N, false);
 
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::addc_value(Core& core, uint8_t value) {
@@ -424,7 +385,7 @@ int GBInterpreter::addc_value(Core& core, uint8_t value) {
   core.set_flag(Regs::Flag::Z, acc == 0);
   core.set_flag(Regs::Flag::N, false);
 
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::sub_value(Core& core, uint8_t value) {
@@ -435,7 +396,7 @@ int GBInterpreter::sub_value(Core& core, uint8_t value) {
   core.set_flag(Regs::Flag::Z, acc == 0);
   core.set_flag(Regs::Flag::N, true);
 
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::subc_value(Core& core, uint8_t value) {
@@ -449,7 +410,7 @@ int GBInterpreter::subc_value(Core& core, uint8_t value) {
   core.set_flag(Regs::Flag::Z, acc == 0);
   core.set_flag(Regs::Flag::N, true);
 
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::srl(Core& core, uint8_t r8) {
@@ -459,7 +420,7 @@ int GBInterpreter::srl(Core& core, uint8_t r8) {
   core.set_flag(Regs::Flag::Z, reg == 0);
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::rr(Core& core, uint8_t r8) {
@@ -472,7 +433,7 @@ int GBInterpreter::rr(Core& core, uint8_t r8) {
   core.set_flag(Regs::Flag::Z, reg == 0);
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::rra(Core& core) {
@@ -485,7 +446,7 @@ int GBInterpreter::rra(Core& core) {
   core.set_flag(Regs::Flag::Z, false);
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::ret_conditional(Core& core, int condition) {
@@ -493,10 +454,10 @@ int GBInterpreter::ret_conditional(Core& core, int condition) {
     core.pc = core.mem_read<uint16_t>(core.sp);
     core.sp += 2;
 
-    return 20;
+    return 12;
   }
 
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::add_hl_r16(Core& core, int gp1) {
@@ -508,13 +469,13 @@ int GBInterpreter::add_hl_r16(Core& core, int gp1) {
   hl += reg;
   core.set_flag(Regs::Flag::N, false);
 
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::jp_hl(Core& core) {
   core.pc = core.regs[Regs::HL];
 
-  return 4;
+  return 0;
 }
 
 int GBInterpreter::or_value(Core& core, uint8_t value) {
@@ -525,7 +486,7 @@ int GBInterpreter::or_value(Core& core, uint8_t value) {
   core.set_flag(Regs::Flag::H, false);
   core.set_flag(Regs::Flag::C, false);
 
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::swap(Core& core, uint8_t r8) {
@@ -537,7 +498,7 @@ int GBInterpreter::swap(Core& core, uint8_t r8) {
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
   core.set_flag(Regs::Flag::C, false);
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::cpl(Core& core) {
@@ -545,21 +506,21 @@ int GBInterpreter::cpl(Core& core) {
   reg = ~reg;
   core.set_flag(Regs::Flag::N, true);
   core.set_flag(Regs::Flag::H, true);
-  return 4;
+  return 0;
 }
 
 int GBInterpreter::scf(Core& core) {
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
   core.set_flag(Regs::Flag::C, true);
-  return 4;
+  return 0;
 }
 
 int GBInterpreter::ccf(Core& core) {
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
   core.set_flag(Regs::Flag::C, !core.get_flag(Regs::Flag::C));
-  return 4;
+  return 0;
 }
 
 int GBInterpreter::rlca(Core& core) {
@@ -571,7 +532,7 @@ int GBInterpreter::rlca(Core& core) {
   core.set_flag(Regs::Flag::Z, false);
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
-  return 4;
+  return 0;
 }
 
 int GBInterpreter::rla_acc(Core& core) {
@@ -584,7 +545,7 @@ int GBInterpreter::rla_acc(Core& core) {
   core.set_flag(Regs::Flag::Z, false);
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
-  return 4;
+  return 0;
 }
 
 int GBInterpreter::rrca(Core& core) {
@@ -596,7 +557,7 @@ int GBInterpreter::rrca(Core& core) {
   core.set_flag(Regs::Flag::Z, false);
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
-  return 4;
+  return 0;
 }
 
 int GBInterpreter::rlc(Core& core, int r8) {
@@ -608,7 +569,7 @@ int GBInterpreter::rlc(Core& core, int r8) {
   core.set_flag(Regs::Flag::Z, reg == 0);
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::rrc(Core& core, int r8) {
@@ -620,7 +581,7 @@ int GBInterpreter::rrc(Core& core, int r8) {
   core.set_flag(Regs::Flag::Z, reg == 0);
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::rl(Core& core, uint8_t r8) {
@@ -633,7 +594,7 @@ int GBInterpreter::rl(Core& core, uint8_t r8) {
   core.set_flag(Regs::Flag::Z, reg == 0);
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::sla(Core& core, uint8_t r8) {
@@ -643,7 +604,7 @@ int GBInterpreter::sla(Core& core, uint8_t r8) {
   core.set_flag(Regs::Flag::Z, reg == 0);
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::sra(Core& core, uint8_t r8) {
@@ -654,18 +615,18 @@ int GBInterpreter::sra(Core& core, uint8_t r8) {
   core.set_flag(Regs::Flag::Z, reg == 0);
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::ld_u16_sp(Core& core) {
   core.mem_write<uint16_t>(core.mem_read<uint16_t>(core.pc), core.sp);
   core.pc += 2;
-  return 20;
+  return 0;
 }
 
 int GBInterpreter::ld_sp_hl(Core& core) {
   core.sp = core.regs[Regs::HL];
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::add_sp_i8(Core& core) {
@@ -678,7 +639,7 @@ int GBInterpreter::add_sp_i8(Core& core) {
 
   core.set_flag(Regs::Flag::Z, false);
   core.set_flag(Regs::Flag::N, false);
-  return 16;
+  return 0;
 }
 
 int GBInterpreter::ld_hl_sp_i8(Core& core) {
@@ -692,24 +653,24 @@ int GBInterpreter::ld_hl_sp_i8(Core& core) {
 
   core.set_flag(Regs::Flag::Z, false);
   core.set_flag(Regs::Flag::N, false);
-  return 12;
+  return 0;
 }
 
 int GBInterpreter::bit(Core& core, uint8_t r8, uint8_t bit) {
   core.set_flag(Regs::Flag::Z, !((get_r8(core, r8) >> bit) & 1));
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, true);
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::res(Core& core, uint8_t r8, uint8_t bit) {
   get_r8(core, r8, true) &= ~(1 << bit);
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::set(Core& core, uint8_t r8, uint8_t bit) {
   get_r8(core, r8, true) |= (1 << bit);
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::jp_conditional(Core& core, int condition) {
@@ -717,9 +678,9 @@ int GBInterpreter::jp_conditional(Core& core, int condition) {
   core.pc += 2;
   if (condition_table(core, condition)) {
     core.pc = jump_addr;
-    return 16;
+    return 4;
   }
-  return 12;
+  return 0;
 }
 
 int GBInterpreter::daa(Core& core) {
@@ -749,247 +710,287 @@ int GBInterpreter::daa(Core& core) {
   }
   core.set_flag(Regs::Flag::Z, acc == 0);
   core.set_flag(Regs::Flag::H, false);
-  return 4;
+  return 0;
 }
 
 int GBInterpreter::ld_a_c(Core& core) {
   get_r8(core, 7) = core.mem_read<uint8_t>(0xFF00 + get_r8(core, 1));
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::ld_c_a(Core& core) {
   core.mem_byte_reference(0xFF00 + get_r8(core, 1), true) = get_r8(core, 7);
-  return 8;
+  return 0;
 }
 
 int GBInterpreter::halt(Core& core) {
   core.HALT = true;
-  return 4;
+  return 0;
 }
 
 int GBInterpreter::decode_execute(Core& core, uint16_t opcode) {
-  int cycles_taken = 0;
+  // clang-format off
+  static int regularInstructionTiming[256] = {
+	1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1,
+	1, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1,
+	2, 3, 2, 2, 1, 1, 2, 1, 2, 2, 2, 2, 1, 1, 2, 1,
+	2, 3, 2, 2, 3, 3, 3, 1, 2, 2, 2, 2, 1, 1, 2, 1,
+	1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+	1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+	1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+	2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1,
+	1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+	1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+	1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+	1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+	2, 3, 3, 4, 3, 4, 2, 4, 2, 4, 3, 0, 3, 6, 2, 4,
+	2, 3, 3, 0, 3, 4, 2, 4, 2, 4, 3, 0, 3, 0, 2, 4,
+	3, 3, 2, 0, 0, 4, 2, 4, 4, 1, 4, 0, 0, 0, 2, 4,
+	3, 3, 2, 1, 0, 4, 2, 4, 3, 2, 4, 1, 0, 0, 2, 4,
+  };
+  // clang-format on
+  int cycles_taken = regularInstructionTiming[opcode] * 4;
   if (opcode == 0x00) {
     // do nothing...
-    cycles_taken = 4;
   } else if (opcode == 0b0000'1000) {
-    cycles_taken = ld_u16_sp(core);
+    cycles_taken += ld_u16_sp(core);
 
   } else if (opcode == 0b0001'1000) {
-    cycles_taken = jr_unconditional(core);
+    cycles_taken += jr_unconditional(core);
 
   } else if (opcode == 0b1110'1010) {
-    cycles_taken = ld_u16_a(core);
+    cycles_taken += ld_u16_a(core);
 
   } else if ((opcode >> 5) == 0b001 && (opcode & 0x07) == 0b000) {
-    cycles_taken = jr_conditional(core, opcode >> 3 & 0b11);
+    cycles_taken += jr_conditional(core, opcode >> 3 & 0b11);
 
   } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0x1) {
-    cycles_taken = ld_r16_u16(core, (opcode >> 4) & 0b11);
+    cycles_taken += ld_r16_u16(core, (opcode >> 4) & 0b11);
 
   } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b1001) {
-    cycles_taken = add_hl_r16(core, (opcode >> 4) & 0b11);
+    cycles_taken += add_hl_r16(core, (opcode >> 4) & 0b11);
 
   } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b0010) {
-    cycles_taken = ld_r16_a_addr(core, opcode >> 4 & 0b11);
+    cycles_taken += ld_r16_a_addr(core, opcode >> 4 & 0b11);
 
   } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b1010) {
-    cycles_taken = ld_a_r16_addr(core, opcode >> 4 & 0b11);
+    cycles_taken += ld_a_r16_addr(core, opcode >> 4 & 0b11);
 
   } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b0011) {
-    cycles_taken = inc_r16(core, opcode >> 4 & 0b11);
+    cycles_taken += inc_r16(core, opcode >> 4 & 0b11);
 
   } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b1011) {
-    cycles_taken = dec_r16(core, opcode >> 4 & 0b11);
+    cycles_taken += dec_r16(core, opcode >> 4 & 0b11);
 
   } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b100) {
-    cycles_taken = inc_r8(core, opcode >> 3 & 0x7);
+    cycles_taken += inc_r8(core, opcode >> 3 & 0x7);
 
   } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b101) {
-    cycles_taken = dec_r8(core, opcode >> 3 & 0x7);
+    cycles_taken += dec_r8(core, opcode >> 3 & 0x7);
 
   } else if (opcode == 0b0111'0110) {
-    cycles_taken = halt(core);
+    cycles_taken += halt(core);
 
   } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b110) {
-    cycles_taken = ld_r8_u8(core, opcode >> 3 & 0x7);
+    cycles_taken += ld_r8_u8(core, opcode >> 3 & 0x7);
 
   } else if (opcode == 0b0010'0111) {
-    cycles_taken = daa(core);
+    cycles_taken += daa(core);
 
   } else if (opcode == 0b0001'1111) {
-    cycles_taken = rra(core);
+    cycles_taken += rra(core);
 
   } else if (opcode == 0b0010'1111) {
-    cycles_taken = cpl(core);
+    cycles_taken += cpl(core);
 
   } else if (opcode == 0b0011'0111) {
-    cycles_taken = scf(core);
+    cycles_taken += scf(core);
 
   } else if (opcode == 0b0011'1111) {
-    cycles_taken = ccf(core);
+    cycles_taken += ccf(core);
 
   } else if (opcode == 0b0000'0111) {
-    cycles_taken = rlca(core);
+    cycles_taken += rlca(core);
 
   } else if (opcode == 0b0001'0111) {
-    cycles_taken = rla_acc(core);
+    cycles_taken += rla_acc(core);
 
   } else if (opcode == 0b0000'1111) {
-    cycles_taken = rrca(core);
+    cycles_taken += rrca(core);
 
   } else if (opcode >> 6 == 0b01) {
-    cycles_taken = ld_r8_r8(core, opcode >> 3 & 0x7, opcode & 0x7);
+    cycles_taken += ld_r8_r8(core, opcode >> 3 & 0x7, opcode & 0x7);
 
   } else if (opcode >> 3 == 0b10110) {
-    cycles_taken = or_a_value(core, get_r8(core, opcode & 0x7));
+    cycles_taken += or_a_value(core, get_r8(core, opcode & 0x7));
 
   } else if (opcode >> 3 == 0b10101) {
-    cycles_taken = xor_value(core, get_r8(core, opcode & 0x7));
+    cycles_taken += xor_value(core, get_r8(core, opcode & 0x7));
 
   } else if (opcode >> 3 == 0b10111) {
-    cycles_taken = cp_value(core, get_r8(core, opcode & 0x7));
+    cycles_taken += cp_value(core, get_r8(core, opcode & 0x7));
 
   } else if (opcode >> 3 == 0b10000) {
-    cycles_taken = add_value(core, get_r8(core, opcode & 0x7));
+    cycles_taken += add_value(core, get_r8(core, opcode & 0x7));
 
   } else if (opcode >> 3 == 0b10001) {
-    cycles_taken = addc_value(core, get_r8(core, opcode & 0x7));
+    cycles_taken += addc_value(core, get_r8(core, opcode & 0x7));
 
   } else if (opcode >> 3 == 0b10010) {
-    cycles_taken = sub_value(core, get_r8(core, opcode & 0x7));
+    cycles_taken += sub_value(core, get_r8(core, opcode & 0x7));
 
   } else if (opcode >> 3 == 0b10011) {
-    cycles_taken = subc_value(core, get_r8(core, opcode & 0x7));
+    cycles_taken += subc_value(core, get_r8(core, opcode & 0x7));
 
   } else if (opcode >> 3 == 0b10100) {
-    cycles_taken = and_value(core, get_r8(core, opcode & 0x7));
+    cycles_taken += and_value(core, get_r8(core, opcode & 0x7));
 
   } else if (opcode >> 5 == 0b110 && (opcode & 0x7) == 0) {
-    cycles_taken = ret_conditional(core, opcode >> 3 & 0b11);
+    cycles_taken += ret_conditional(core, opcode >> 3 & 0b11);
 
   } else if (opcode == 0b1110'0000) {
-    cycles_taken = ldh_u8_a(core);
+    cycles_taken += ldh_u8_a(core);
 
   } else if (opcode == 0b1110'1000) {
-    cycles_taken = add_sp_i8(core);
+    cycles_taken += add_sp_i8(core);
 
   } else if (opcode == 0b1111'0000) {
-    cycles_taken = ldh_a_u8(core);
+    cycles_taken += ldh_a_u8(core);
 
   } else if (opcode == 0b1111'1000) {
-    cycles_taken = ld_hl_sp_i8(core);
+    cycles_taken += ld_hl_sp_i8(core);
 
   } else if (opcode >> 6 == 0b11 && (opcode & 0xf) == 0b0001) {
-    cycles_taken = pop_r16(core, opcode >> 4 & 0b11);
+    cycles_taken += pop_r16(core, opcode >> 4 & 0b11);
 
   } else if (opcode == 0b1111'1001) {
-    cycles_taken = ld_sp_hl(core);
+    cycles_taken += ld_sp_hl(core);
 
   } else if (opcode == 0b1110'1001) {
-    cycles_taken = jp_hl(core);
+    cycles_taken += jp_hl(core);
 
   } else if (opcode == 0b1100'1001) {
-    cycles_taken = ret(core);
+    cycles_taken += ret(core);
 
   } else if (opcode == 0b1101'1001) {
-    cycles_taken = reti(core);
+    cycles_taken += reti(core);
 
   } else if (opcode >> 5 == 0b110 && (opcode & 0x7) == 0b010) {
-    cycles_taken = jp_conditional(core, opcode >> 3 & 0b11);
+    cycles_taken += jp_conditional(core, opcode >> 3 & 0b11);
 
   } else if (opcode == 0b1110'0010) {
-    cycles_taken = ld_c_a(core);
+    cycles_taken += ld_c_a(core);
 
   } else if (opcode == 0b1111'1010) {
-    cycles_taken = ld_a_u16(core);
+    cycles_taken += ld_a_u16(core);
 
   } else if (opcode == 0b1111'0010) {
-    cycles_taken = ld_a_c(core);
+    cycles_taken += ld_a_c(core);
 
   } else if (opcode == 0b1100'0011) {
-    cycles_taken = jp_u16(core);
+    cycles_taken += jp_u16(core);
 
   } else if (opcode == 0b1111'0011) {
-    cycles_taken = di(core);
+    cycles_taken += di(core);
 
   } else if (opcode == 0b1111'1011) {
-    cycles_taken = ei(core);
+    cycles_taken += ei(core);
 
   } else if (opcode >> 5 == 0b110 && (opcode & 0x7) == 0b0100) {
-    cycles_taken = call_conditional(core, opcode >> 3 & 0b11);
+    cycles_taken += call_conditional(core, opcode >> 3 & 0b11);
 
   } else if (opcode == 0xCB) {
+    // clang-format off
+    static int extendedInstructionTiming[256] = {
+	    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+	    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+	    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+	    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+	    2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2,
+	    2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2,
+	    2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2,
+	    2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2,
+	    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+	    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+	    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+	    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+	    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+	    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+	    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+	    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+    };
+    // clang-format on
     const auto second = core.mem_read<uint8_t>(core.pc++);
     if (second >> 3 == 0b00111) {
-      cycles_taken = srl(core, second & 0x7);
+      srl(core, second & 0x7);
 
     } else if (second >> 3 == 0b00011) {
-      cycles_taken = rr(core, second & 0x7);
+      rr(core, second & 0x7);
 
     } else if (second >> 3 == 0b00110) {
-      cycles_taken = swap(core, second & 0x7);
+      swap(core, second & 0x7);
 
     } else if (second >> 3 == 0b00000) {
-      cycles_taken = rlc(core, second & 0x7);
+      rlc(core, second & 0x7);
 
     } else if (second >> 3 == 0b00001) {
-      cycles_taken = rrc(core, second & 0x7);
+      rrc(core, second & 0x7);
 
     } else if (second >> 3 == 0b00010) {
-      cycles_taken = rl(core, second & 0x7);
+      rl(core, second & 0x7);
 
     } else if (second >> 3 == 0b00100) {
-      cycles_taken = sla(core, second & 0x7);
+      sla(core, second & 0x7);
 
     } else if (second >> 3 == 0b00101) {
-      cycles_taken = sra(core, second & 0x7);
+      sra(core, second & 0x7);
 
     } else if (second >> 6 == 0b01) {
-      cycles_taken = bit(core, second & 0x7, (second >> 3) & 0x7);
+      bit(core, second & 0x7, (second >> 3) & 0x7);
 
     } else if (second >> 6 == 0b10) {
-      cycles_taken = res(core, second & 0x7, (second >> 3) & 0x7);
+      res(core, second & 0x7, (second >> 3) & 0x7);
 
     } else if (second >> 6 == 0b11) {
-      cycles_taken = set(core, second & 0x7, (second >> 3) & 0x7);
+      set(core, second & 0x7, (second >> 3) & 0x7);
 
     } else {
       PANIC("Unhandled bit opcode: 0x{:02X} | 0b{:08b}\n", second, second);
     }
+    cycles_taken = extendedInstructionTiming[second] * 4;
 
   } else if (opcode >> 6 == 0b11 && (opcode & 0xf) == 0b0101) {
-    cycles_taken = push_r16(core, opcode >> 4 & 0b11);
+    cycles_taken += push_r16(core, opcode >> 4 & 0b11);
 
   } else if (opcode == 0b1100'1101) {
-    cycles_taken = call_u16(core);
+    cycles_taken += call_u16(core);
 
   } else if (opcode == 0b1111'1110) {
-    cycles_taken = cp_value(core, core.mem_read<uint8_t>(core.pc++));
+    cycles_taken += cp_value(core, core.mem_read<uint8_t>(core.pc++));
 
   } else if (opcode == 0b1110'0110) {
-    cycles_taken = and_value(core, core.mem_read<uint8_t>(core.pc++));
+    cycles_taken += and_value(core, core.mem_read<uint8_t>(core.pc++));
 
   } else if (opcode == 0b1100'0110) {
-    cycles_taken = add_value(core, core.mem_read<uint8_t>(core.pc++));
+    cycles_taken += add_value(core, core.mem_read<uint8_t>(core.pc++));
 
   } else if (opcode == 0b1101'0110) {
-    cycles_taken = sub_value(core, core.mem_read<uint8_t>(core.pc++));
+    cycles_taken += sub_value(core, core.mem_read<uint8_t>(core.pc++));
 
   } else if (opcode == 0b1110'1110) {
-    cycles_taken = xor_value(core, core.mem_read<uint8_t>(core.pc++));
+    cycles_taken += xor_value(core, core.mem_read<uint8_t>(core.pc++));
 
   } else if (opcode == 0b1100'1110) {
-    cycles_taken = addc_value(core, core.mem_read<uint8_t>(core.pc++));
+    cycles_taken += addc_value(core, core.mem_read<uint8_t>(core.pc++));
 
   } else if (opcode == 0b1111'0110) {
-    cycles_taken = or_value(core, core.mem_read<uint8_t>(core.pc++));
+    cycles_taken += or_value(core, core.mem_read<uint8_t>(core.pc++));
 
   } else if (opcode == 0b1101'1110) {
-    cycles_taken = subc_value(core, core.mem_read<uint8_t>(core.pc++));
+    cycles_taken += subc_value(core, core.mem_read<uint8_t>(core.pc++));
 
   } else if (opcode >> 6 == 0b11 && (opcode & 0x7) == 0b111) {
-    cycles_taken = rst(core, (opcode >> 3) & 0x7);
+    cycles_taken += rst(core, (opcode >> 3) & 0x7);
 
   } else {
     PANIC("Unhandled opcode: 0x{:02X} | 0b{:08b}\n", opcode, opcode);
