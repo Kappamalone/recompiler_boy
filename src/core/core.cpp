@@ -68,7 +68,8 @@ Core::Core(Config config) {
     regs[1] = 0x0013;
     regs[2] = 0x00d8;
     regs[3] = 0x014d;
-    // TODO: lcdc and palette
+    LCDC = 0x91;
+    // TODO: palette
   } else {
     load_bootrom(config.bootrom_path);
   }
@@ -142,6 +143,9 @@ uint8_t& Core::mem_byte_reference(uint32_t addr, bool write) {
   } else if (in_between(0xFE00, 0xFE9F, addr)) {
     return oam[addr - 0xFE00];
 
+  } else if (in_between(0xFEA0, 0xFEFF, addr)) {
+    return STUB;
+
   } else if (in_between(0xFF00, 0xFFFF, addr)) {
     return handle_mmio(addr);
   } else {
@@ -168,6 +172,7 @@ template void Core::mem_write<uint32_t>(uint32_t addr, uint32_t value);
 uint8_t& Core::handle_mmio(uint32_t addr) {
   switch (addr) {
     case 0xFF00:
+      STUB = 0xff;
       return STUB;
     case 0xFF01:
       return SB;
@@ -215,13 +220,14 @@ uint8_t& Core::handle_mmio(uint32_t addr) {
     case 0xFF49:
       return STUB;
     case 0xFF4A:
-      return STUB;
+      return WY;
     case 0xFF4B:
-      return STUB;
+      return WX;
     case 0xFFFF:
       return IE;
     default:
-      PANIC("Unknown memory reference at 0x{:08X}\n", addr);
+      PRINT("Unknown memory reference at 0x{:08X}\n", addr);
+      return STUB;
   }
 }
 

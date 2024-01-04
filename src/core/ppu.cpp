@@ -93,14 +93,34 @@ void Core::PPU::draw_bg() {
   // tilemap : maps tile data into a scene
   // tiledata: raw pixel data, colors index into a palette
 
-  const uint16_t tilemap_start = BIT(core.LCDC, 3) ? 0x9C00 : 0x9800;
-  const uint16_t tiledata_start = BIT(core.LCDC, 4) ? 0x8000 : 0x8800;
-  const bool signed_addressing = BIT(core.LCDC, 4);
+  uint16_t tilemap_start = 0;
+  const uint16_t tiledata_start = BIT(core.LCDC, 4) ? 0x8000 : 0x9000;
+  const bool signed_addressing = !BIT(core.LCDC, 4);
 
   for (uint8_t x = 0; x < 160; x++) {
-    // bg specific
-    uint8_t xcoord_offset = x + core.SCX;
-    uint8_t ycoord_offset = core.LY + core.SCY;
+
+    // window variables
+    bool using_window = false;
+    uint8_t window_x = 7 - core.WX;
+    uint8_t window_y = core.WY;
+    if (BIT(core.LCDC, 5) && window_y < core.LY) {
+      using_window = true;
+    }
+
+    uint8_t xcoord_offset = 0;
+    uint8_t ycoord_offset = 0;
+
+    if (using_window && window_x <= x) {
+      // rendering window
+      xcoord_offset = x - window_y;
+      ycoord_offset = core.LY - window_y;
+      tilemap_start = BIT(core.LCDC, 6) ? 0x9C00 : 0x9800;
+    } else {
+      // rendering background
+      xcoord_offset = x + core.SCX;
+      ycoord_offset = core.LY + core.SCY;
+      tilemap_start = BIT(core.LCDC, 3) ? 0x9C00 : 0x9800;
+    }
 
     int row = ycoord_offset % 8;
     int tilemap_offset = (ycoord_offset / 8) * 32;
@@ -115,8 +135,7 @@ void Core::PPU::draw_bg() {
     uint8_t byte2 = 0;
     uint16_t target = 0;
     if (signed_addressing) {
-      target = (row * 2) + ((int16_t)(int8_t)tile_num * (int16_t)16) +
-               tiledata_start;
+      target = (row * 2) + ((int16_t)(int8_t)tile_num * 16) + tiledata_start;
     } else {
       target = (row * 2) + ((uint16_t)tile_num * 16) + tiledata_start;
     }

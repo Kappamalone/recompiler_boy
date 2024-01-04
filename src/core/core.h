@@ -87,6 +87,8 @@ public:
   uint8_t LY;
   uint8_t SCX;
   uint8_t SCY;
+  uint8_t WX;
+  uint8_t WY;
   uint8_t BGP;
   uint8_t STUB;
 
