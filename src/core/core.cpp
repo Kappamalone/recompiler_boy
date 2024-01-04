@@ -14,6 +14,17 @@ static void create_logging_file(const std::string& filename) {
   }
 }
 
+void append_to_logging(const std::string& content) {
+  std::ofstream file("../logging.txt", std::ios::app);
+
+  if (file.is_open()) {
+    file << content;
+    file.close();
+  } else {
+    std::cerr << "Unable to open file: " << std::endl;
+  }
+}
+
 Core::Core(Config config) {
   fb.pixels.resize(fb.width * fb.height * 4);
   // logging:
@@ -193,6 +204,8 @@ uint8_t& Core::handle_mmio(uint32_t addr) {
       return SCY;
     case 0xFF43:
       return SCX;
+    case 0xFF44:
+      return LY;
     case 0xFF45:
       return STUB;
     case 0xFF47:
@@ -201,8 +214,6 @@ uint8_t& Core::handle_mmio(uint32_t addr) {
       return STUB;
     case 0xFF49:
       return STUB;
-    case 0xFF44:
-      return LY;
     case 0xFF4A:
       return STUB;
     case 0xFF4B:
@@ -302,9 +313,26 @@ void Core::run_frame() {
     int cycles_taken = 0;
 
     if (!HALT) {
+
+      auto& core = *this;
+      /*
+      append_to_logging(
+          fmt::format("A: {:02X} F: {:02X} B: {:02X} C: {:02X} D: "
+                      "{:02X} E: {:02X} H: {:02X} L: {:02X} SP: {:04X} PC: "
+                      "00:{:04X} ({:02X} "
+                      "{:02X} {:02X} {:02X})\n",
+                      core.regs[Regs::AF] >> 8, core.regs[Regs::AF] & 0xff,
+                      core.regs[Regs::BC] >> 8, core.regs[Regs::BC] & 0xff,
+                      core.regs[Regs::DE] >> 8, core.regs[Regs::DE] & 0xff,
+                      core.regs[Regs::HL] >> 8, core.regs[Regs::HL] & 0xff,
+                      core.sp, core.pc, core.mem_read<uint8_t>(core.pc),
+                      core.mem_read<uint8_t>(core.pc + 1),
+                      core.mem_read<uint8_t>(core.pc + 2),
+                      core.mem_read<uint8_t>(core.pc + 3)));
+      */
+
       auto opcode = mem_read<uint8_t>(pc++);
       cycles_taken = GBInterpreter::decode_execute(*this, opcode);
-      // TODO: tick ppu
 
       // enable interrupt from EI after the next instruction
       if (req_IME && opcode != 0xFB) {
@@ -324,6 +352,4 @@ void Core::run_frame() {
 
     cycles_to_execute -= cycles_taken;
   }
-
-  ppu.draw_bg();
 }

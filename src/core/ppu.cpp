@@ -97,11 +97,10 @@ void Core::PPU::draw_bg() {
   const uint16_t tiledata_start = BIT(core.LCDC, 4) ? 0x8000 : 0x8800;
   const bool signed_addressing = BIT(core.LCDC, 4);
 
-  int y = core.LY;
   for (uint8_t x = 0; x < 160; x++) {
     // bg specific
-    int xcoord_offset = x + core.SCX;
-    int ycoord_offset = y + core.SCY;
+    uint8_t xcoord_offset = x + core.SCX;
+    uint8_t ycoord_offset = core.LY + core.SCY;
 
     int row = ycoord_offset % 8;
     int tilemap_offset = (ycoord_offset / 8) * 32;
@@ -129,11 +128,12 @@ void Core::PPU::draw_bg() {
         ((byte2 >> (7 - col) & 1) << 1) | (byte1 >> (7 - col) & 1);
     uint32_t colour = colors[(core.BGP >> (colourIndex * 2)) & 0x3];
 
-    core.fb.pixels[(x + y * core.fb.width) * 4 + 0] = (colour >> 16) & 0xff;
-    core.fb.pixels[(x + y * core.fb.width) * 4 + 1] = (colour >> 8) & 0xff;
-    core.fb.pixels[(x + y * core.fb.width) * 4 + 2] = (colour >> 0) & 0xff;
-    core.fb.pixels[(x + y * core.fb.width) * 4 + 3] = 0xff;
+    core.fb.pixels[(x + core.LY * core.fb.width) * 4 + 0] =
+        (colour >> 16) & 0xff;
+    core.fb.pixels[(x + core.LY * core.fb.width) * 4 + 1] =
+        (colour >> 8) & 0xff;
+    core.fb.pixels[(x + core.LY * core.fb.width) * 4 + 2] =
+        (colour >> 0) & 0xff;
+    core.fb.pixels[(x + core.LY * core.fb.width) * 4 + 3] = 0xff;
   }
 }
-
-void Core::PPU::draw_frame() { draw_bg(); }

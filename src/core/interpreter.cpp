@@ -6,17 +6,6 @@
 #include <fstream>
 #include <iostream>
 
-void append_to_logging(const std::string& content) {
-  std::ofstream file("../../logging.txt", std::ios::app);
-
-  if (file.is_open()) {
-    file << content;
-    file.close();
-  } else {
-    std::cerr << "Unable to open file: " << std::endl;
-  }
-}
-
 static constexpr uint16_t& get_group_1(Core& core, int gp1) {
   switch (gp1) {
     case 0:

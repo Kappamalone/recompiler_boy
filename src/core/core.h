@@ -33,7 +33,6 @@ public:
 
     void draw_bg();
     void draw_scanline();
-    void draw_frame();
   };
   PPU ppu{*this};
 
