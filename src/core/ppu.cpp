@@ -116,10 +116,10 @@ void Core::PPU::draw_sprites() {
     }
   }
 
-  std::sort(sprites.begin(), sprites.end(),
+  std::sort(sprites.begin(), sprites.begin() + sprites_found,
             [](const Sprite& a, const Sprite& b) { return a.x_pos < b.x_pos; });
 
-  for (int i = 9; i >= 0; i--) {
+  for (int i = sprites_found - 1; i >= 0; i--) {
     int y_pos = sprites[i].y_pos;
     int x_pos = sprites[i].x_pos;
     int tile_num = sprites[i].tile_num;
@@ -133,11 +133,6 @@ void Core::PPU::draw_sprites() {
     // now we test to see if there is an intersection between the sprite and the
     // current scanline
     if (core.LY >= y_pos && core.LY < y_pos + sprite_height) {
-      sprites_found++;
-      if (x_pos < 0 || x_pos > 160) {
-        return;
-      }
-
       int row = core.LY - y_pos;
       if (y_flip) {
         row = sprite_height - row - 1;
@@ -153,8 +148,8 @@ void Core::PPU::draw_sprites() {
       for (int col = 0; col < 8; col++) {
         int tile_x = x_flip ? 7 - col : col;
 
-        uint8_t byte1 = target >> 8;
-        uint8_t byte2 = target & 0xff;
+        uint8_t byte2 = target >> 8;
+        uint8_t byte1 = target & 0xff;
         int colour_index =
             (BIT(byte2, 7 - tile_x) << 1) | (BIT(byte1, 7 - tile_x));
         uint32_t colour = colors[(palette >> (colour_index << 1)) & 0x3];
@@ -165,7 +160,7 @@ void Core::PPU::draw_sprites() {
             core.fb.pixels[fb_offset + 1] == ((colors[0] >> 8) & 0xff) &&
             core.fb.pixels[fb_offset + 2] == ((colors[0] >> 0) & 0xff);
 
-        if (x_pos + col >= 160 || colour_index == 0 ||
+        if (x_pos + col >= 160 || x_pos + col < 0 || colour_index == 0 ||
             (priority && !is_colour_0)) {
           continue;
         }
@@ -197,7 +192,7 @@ void Core::PPU::draw_bg() {
 
     // window variables
     bool using_window = false;
-    uint16_t window_x = (int16_t)(int8_t)core.WX - (uint16_t)7;
+    uint16_t window_x = core.WX - 7;
     uint16_t window_y = core.WY;
     if (BIT(core.LCDC, 5) && window_y <= core.LY) {
       using_window = true;

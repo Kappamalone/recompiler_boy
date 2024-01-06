@@ -92,6 +92,9 @@ public:
     while (window.isOpen()) {
       ping_core_thread();
 
+      wait_for_core_thread();
+
+      // HACK: temporarily eliminates screen tearing
       handle_input();
       draw_imgui_windows();
       texture.update(core.get_fb_ref().pixels.data());
@@ -99,8 +102,6 @@ public:
       window.draw(sprite);
       ImGui::SFML::Render(window);
       window.display();
-
-      wait_for_core_thread();
     }
 
     exit(0);

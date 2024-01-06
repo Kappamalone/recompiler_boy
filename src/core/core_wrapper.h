@@ -42,6 +42,7 @@ public:
     }
   }
 
+  // TODO: implement double buffering to reduce/eliminate screen tearing
   [[nodiscard]] const auto& get_fb_ref() const { return core.get_fb_ref(); }
   [[nodiscard]] auto get_frame_time() const { return frame_time; }
   [[nodiscard]] const Core& get_core_ref() const { return core; }
