@@ -1,5 +1,7 @@
 #include "common.h"
 #include "core.h"
+#include <algorithm>
+#include <array>
 #include <cstdint>
 
 void Core::PPU::tick(int cycles) {
@@ -81,7 +83,7 @@ void Core::PPU::tick(int cycles) {
 
 void Core::PPU::draw_scanline() {
   draw_bg();
-  // draw_sprites();
+  draw_sprites();
 }
 
 void Core::PPU::draw_sprites() {
@@ -91,6 +93,13 @@ void Core::PPU::draw_sprites() {
 
   int sprite_height = BIT(core.LCDC, 2) ? 16 : 8; // 8 x 16 vs 8 x 8
   int sprites_found = 0;
+  typedef struct Sprite {
+    int y_pos;
+    int x_pos;
+    int tile_num;
+    uint8_t attr;
+  } Sprite;
+  std::array<Sprite, 10> sprites{};
 
   // now let's scan through OAM to get sprite data
   for (int i = 0; i < 0xA0 && sprites_found < 10; i += 4) {
@@ -98,6 +107,20 @@ void Core::PPU::draw_sprites() {
     int x_pos = core.mem_read<uint8_t>(0xFE00 + i + 1) - 8;
     int tile_num = core.mem_read<uint8_t>(0xFE00 + i + 2);
     auto attr = core.mem_read<uint8_t>(0xFE00 + i + 3);
+    if (core.LY >= y_pos && core.LY < y_pos + sprite_height) {
+      sprites[sprites_found++] = {
+          .y_pos = y_pos, .x_pos = x_pos, .tile_num = tile_num, .attr = attr};
+    }
+  }
+
+  std::sort(sprites.begin(), sprites.end(),
+            [](const Sprite& a, const Sprite& b) { return a.x_pos < b.x_pos; });
+
+  for (int i = 9; i >= 0; i--) {
+    int y_pos = sprites[i].y_pos;
+    int x_pos = sprites[i].x_pos;
+    int tile_num = sprites[i].tile_num;
+    auto attr = sprites[i].attr;
 
     bool priority = BIT(attr, 7);
     bool y_flip = BIT(attr, 6);
@@ -117,6 +140,10 @@ void Core::PPU::draw_sprites() {
         row = sprite_height - row - 1;
       }
 
+      // bit 0 of tile num should be ignored if sprite is 8x16
+      if (sprite_height == 16) {
+        tile_num &= ~(1);
+      }
       auto target =
           core.mem_read<uint16_t>(0x8000 + (uint16_t)tile_num * 16 + row * 2);
 
@@ -125,33 +152,30 @@ void Core::PPU::draw_sprites() {
 
         uint8_t byte1 = target >> 8;
         uint8_t byte2 = target & 0xff;
-        int colourIndex =
+        int colour_index =
             (BIT(byte2, 7 - tile_x) << 1) | (BIT(byte1, 7 - tile_x));
-        uint32_t colour = colors[(palette >> (colourIndex << 1)) & 0x3];
+        uint32_t colour = colors[(palette >> (colour_index << 1)) & 0x3];
+        uint32_t fb_offset = (x_pos + col + core.LY * core.fb.width) * 4;
 
-        if (x_pos + col >= 160 || colourIndex == 0) {
-          return;
+        bool is_colour_0 =
+            core.fb.pixels[fb_offset] == ((colors[0] >> 16) & 0xff) &&
+            core.fb.pixels[fb_offset + 1] == ((colors[0] >> 8) & 0xff) &&
+            core.fb.pixels[fb_offset + 2] == ((colors[0] >> 0) & 0xff);
+
+        if (x_pos + col >= 160 || colour_index == 0 ||
+            (priority && !is_colour_0)) {
+          continue;
         }
-
-        core.fb.pixels[(x_pos + col + core.LY * core.fb.width) * 4 + 0] =
-            (colour >> 16) & 0xff;
-        core.fb.pixels[(x_pos + col + core.LY * core.fb.width) * 4 + 1] =
-            (colour >> 8) & 0xff;
-        core.fb.pixels[(x_pos + col + core.LY * core.fb.width) * 4 + 2] =
-            (colour >> 0) & 0xff;
-        core.fb.pixels[(x_pos + col + core.LY * core.fb.width) * 4 + 3] = 0xff;
+        core.fb.pixels[fb_offset + 0] = (colour >> 16) & 0xff;
+        core.fb.pixels[fb_offset + 1] = (colour >> 8) & 0xff;
+        core.fb.pixels[fb_offset + 2] = (colour >> 0) & 0xff;
+        core.fb.pixels[fb_offset + 3] = 0xff;
       }
     }
   }
 }
 
 void Core::PPU::draw_bg() {
-  if (!BIT(core.LCDC, 0)) {
-    return;
-  }
-
-  // draw tile
-
   // tilemap : maps tile data into a scene
   // tiledata: raw pixel data, colors index into a palette
 
@@ -173,7 +197,7 @@ void Core::PPU::draw_bg() {
 
     if (using_window && window_x <= x) {
       // rendering window
-      xcoord_offset = x - window_y;
+      xcoord_offset = x - window_x;
       ycoord_offset = core.LY - window_y;
       tilemap_start = BIT(core.LCDC, 6) ? 0x9C00 : 0x9800;
     } else {
@@ -204,7 +228,11 @@ void Core::PPU::draw_bg() {
 
     // the color id is formed by vertically aligning byte 1 and 2
     // we then index to the bgp using that id to get the color
+
     int colourIndex = (BIT(byte2, 7 - col) << 1) | (BIT(byte1, 7 - col));
+    if (!BIT(core.LCDC, 0)) {
+      colourIndex = 0;
+    }
     uint32_t colour = colors[(core.BGP >> (colourIndex << 1)) & 0x3];
     core.fb.pixels[(x + core.LY * core.fb.width) * 4 + 0] =
         (colour >> 16) & 0xff;
