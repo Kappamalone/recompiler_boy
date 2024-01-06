@@ -28,9 +28,10 @@ public:
 
     PPUMode mode = Core::PPU::PPUMode::OAMScan;
     int dot_clock = 0;
-    std::array<uint32_t, 4> colors = {0xf6c6a8, 0xd17c7c, 0x5b768d, 0x46425e};
+    std::array<uint32_t, 4> colors = {0xe0f8d0, 0x88c070, 0x346856, 0x081820};
 
     void tick(int cycles);
+    int WLC = 0;
 
     void draw_bg();
     void draw_sprites();
@@ -75,7 +76,7 @@ public:
   uint8_t& mem_byte_reference(uint32_t addr, bool write = false);
   template <typename T>
   void mem_write(uint32_t addr, T value);
-  uint8_t& handle_mmio(uint32_t addr);
+  uint8_t& handle_mmio(uint32_t addr, bool write);
 
   // cartridge functions
   void load_bootrom(const char* path);

@@ -115,7 +115,7 @@ T Core::mem_read(uint32_t addr) {
     return *(T*)(&oam[addr - 0xFE00]);
 
   } else if (in_between(0xFF00, 0xFFFF, addr)) {
-    return handle_mmio(addr);
+    return handle_mmio(addr, false);
   } else {
     PANIC("Unknown memory read at 0x{:08X}\n", addr);
   }
@@ -150,7 +150,7 @@ uint8_t& Core::mem_byte_reference(uint32_t addr, bool write) {
     return STUB;
 
   } else if (in_between(0xFF00, 0xFFFF, addr)) {
-    return handle_mmio(addr);
+    return handle_mmio(addr, write);
   } else {
     PANIC("Unknown memory reference at 0x{:08X}\n", addr);
   }
@@ -172,7 +172,7 @@ template void Core::mem_write<uint8_t>(uint32_t addr, uint8_t value);
 template void Core::mem_write<uint16_t>(uint32_t addr, uint16_t value);
 template void Core::mem_write<uint32_t>(uint32_t addr, uint32_t value);
 
-uint8_t& Core::handle_mmio(uint32_t addr) {
+uint8_t& Core::handle_mmio(uint32_t addr, bool write) {
   switch (addr) {
     case 0xFF00:
       STUB = 0xff;

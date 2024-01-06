@@ -6,6 +6,8 @@
 
 void Core::PPU::tick(int cycles) {
   if (!BIT(core.LCDC, 7)) {
+    core.LY = 0;
+    core.STAT &= 0xFC;
     return;
   }
 
@@ -41,6 +43,7 @@ void Core::PPU::tick(int cycles) {
 
           if (core.LY == 144) {
             // switch to VBlank
+            WLC = 0;
             mode = PPUMode::VBlank;
             core.STAT = (core.STAT & 0xFC) | 0b01;
 
@@ -166,6 +169,7 @@ void Core::PPU::draw_sprites() {
             (priority && !is_colour_0)) {
           continue;
         }
+
         core.fb.pixels[fb_offset + 0] = (colour >> 16) & 0xff;
         core.fb.pixels[fb_offset + 1] = (colour >> 8) & 0xff;
         core.fb.pixels[fb_offset + 2] = (colour >> 0) & 0xff;
@@ -178,10 +182,14 @@ void Core::PPU::draw_sprites() {
 void Core::PPU::draw_bg() {
   // tilemap : maps tile data into a scene
   // tiledata: raw pixel data, colors index into a palette
+  if (!BIT(core.LCDC, 0)) {
+    return;
+  }
 
   uint16_t tilemap_start = 0;
   const uint16_t tiledata_start = BIT(core.LCDC, 4) ? 0x8000 : 0x9000;
   const bool signed_addressing = !BIT(core.LCDC, 4);
+  bool increment_wlc = false;
 
   for (uint8_t x = 0; x < 160; x++) {
     uint8_t xcoord_offset = 0;
@@ -197,8 +205,9 @@ void Core::PPU::draw_bg() {
 
     if (using_window && window_x <= x) {
       // rendering window
+      increment_wlc = true;
       xcoord_offset = x - window_x;
-      ycoord_offset = core.LY - window_y;
+      ycoord_offset = WLC;
       tilemap_start = BIT(core.LCDC, 6) ? 0x9C00 : 0x9800;
     } else {
       // rendering background
@@ -230,9 +239,6 @@ void Core::PPU::draw_bg() {
     // we then index to the bgp using that id to get the color
 
     int colourIndex = (BIT(byte2, 7 - col) << 1) | (BIT(byte1, 7 - col));
-    if (!BIT(core.LCDC, 0)) {
-      colourIndex = 0;
-    }
     uint32_t colour = colors[(core.BGP >> (colourIndex << 1)) & 0x3];
     core.fb.pixels[(x + core.LY * core.fb.width) * 4 + 0] =
         (colour >> 16) & 0xff;
@@ -241,6 +247,10 @@ void Core::PPU::draw_bg() {
     core.fb.pixels[(x + core.LY * core.fb.width) * 4 + 2] =
         (colour >> 0) & 0xff;
     core.fb.pixels[(x + core.LY * core.fb.width) * 4 + 3] = 0xff;
+  }
+
+  if (increment_wlc) {
+    WLC++;
   }
 }
 
