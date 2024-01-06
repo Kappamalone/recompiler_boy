@@ -28,10 +28,12 @@ public:
 
     PPUMode mode = Core::PPU::PPUMode::OAMScan;
     int dot_clock = 0;
+    std::array<uint32_t, 4> colors = {0xf6c6a8, 0xd17c7c, 0x5b768d, 0x46425e};
 
     void tick(int cycles);
 
     void draw_bg();
+    void draw_sprites();
     void draw_scanline();
   };
   PPU ppu{*this};
@@ -90,6 +92,8 @@ public:
   uint8_t WX;
   uint8_t WY;
   uint8_t BGP;
+  uint8_t OBP0;
+  uint8_t OBP1;
   uint8_t STUB;
 
 public:

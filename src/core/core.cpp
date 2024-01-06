@@ -111,6 +111,9 @@ T Core::mem_read(uint32_t addr) {
     return *(T*)(&wram[addr - 0xC000]);
   } else if (in_between(0xFF80, 0xFFFE, addr)) {
     return *(T*)(&hram[addr - 0xFF80]);
+  } else if (in_between(0xFE00, 0xFE9F, addr)) {
+    return *(T*)(&oam[addr - 0xFE00]);
+
   } else if (in_between(0xFF00, 0xFFFF, addr)) {
     return handle_mmio(addr);
   } else {
@@ -216,9 +219,9 @@ uint8_t& Core::handle_mmio(uint32_t addr) {
     case 0xFF47:
       return BGP;
     case 0xFF48:
-      return STUB;
+      return OBP0;
     case 0xFF49:
-      return STUB;
+      return OBP1;
     case 0xFF4A:
       return WY;
     case 0xFF4B:

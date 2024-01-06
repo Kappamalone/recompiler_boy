@@ -26,5 +26,5 @@
 #define PRINT64(VAR) PRINT("0x{:016X}\n", VAR);
 
 // bit manipulation
-#define BIT(VALUE, POS) ((VALUE >> POS) & 1)
+#define BIT(VALUE, POS) ((VALUE >> (POS)) & 1)
 #define BIT_REGION(VALUE, POS, SIZE) (VALUE >> POS) & ((((uint64_t)1 << SIZE)-1))
