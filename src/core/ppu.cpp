@@ -53,9 +53,9 @@ void Core::PPU::tick(int cycles) {
               core.IF |= 0b10;
             }
           }
+          do_lyc_check();
         }
 
-        // TODO: Compare LYC
         break;
       case PPUMode::VBlank:
         if (dot_clock == 456) {
@@ -72,8 +72,8 @@ void Core::PPU::tick(int cycles) {
 
             core.LY = 0;
           }
+          do_lyc_check();
         }
-        // TODO: Compare LYC
         break;
     }
   }
@@ -81,7 +81,7 @@ void Core::PPU::tick(int cycles) {
 
 void Core::PPU::draw_scanline() {
   draw_bg();
-  draw_sprites();
+  // draw_sprites();
 }
 
 void Core::PPU::draw_sprites() {
@@ -94,9 +94,9 @@ void Core::PPU::draw_sprites() {
 
   // now let's scan through OAM to get sprite data
   for (int i = 0; i < 0xA0 && sprites_found < 10; i += 4) {
-    auto y_pos = core.mem_read<uint8_t>(0xFE00 + i) - 16;
-    auto x_pos = core.mem_read<uint8_t>(0xFE00 + i + 1) - 8;
-    auto tile_num = core.mem_read<uint8_t>(0xFE00 + i + 2);
+    int y_pos = core.mem_read<uint8_t>(0xFE00 + i) - 16;
+    int x_pos = core.mem_read<uint8_t>(0xFE00 + i + 1) - 8;
+    int tile_num = core.mem_read<uint8_t>(0xFE00 + i + 2);
     auto attr = core.mem_read<uint8_t>(0xFE00 + i + 3);
 
     bool priority = BIT(attr, 7);
@@ -112,7 +112,11 @@ void Core::PPU::draw_sprites() {
         return;
       }
 
-      int row = y_flip ? 7 - (core.LY - y_pos) : (core.LY - y_pos) & 7;
+      int row = core.LY - y_pos;
+      if (y_flip) {
+        row = sprite_height - row - 1;
+      }
+
       auto target =
           core.mem_read<uint16_t>(0x8000 + (uint16_t)tile_num * 16 + row * 2);
 
@@ -161,9 +165,9 @@ void Core::PPU::draw_bg() {
 
     // window variables
     bool using_window = false;
-    uint8_t window_x = 7 - core.WX;
-    uint8_t window_y = core.WY;
-    if (BIT(core.LCDC, 5) && window_y < core.LY) {
+    uint16_t window_x = (int16_t)(int8_t)core.WX - (uint16_t)7;
+    uint16_t window_y = core.WY;
+    if (BIT(core.LCDC, 5) && window_y <= core.LY) {
       using_window = true;
     }
 
@@ -209,5 +213,18 @@ void Core::PPU::draw_bg() {
     core.fb.pixels[(x + core.LY * core.fb.width) * 4 + 2] =
         (colour >> 0) & 0xff;
     core.fb.pixels[(x + core.LY * core.fb.width) * 4 + 3] = 0xff;
+  }
+}
+
+void Core::PPU::do_lyc_check() {
+  if (core.LY == core.LYC) {
+    core.STAT |= (1 << 2);
+
+    if (BIT(core.STAT, 6)) {
+      core.IF |= 0b10;
+    }
+
+  } else {
+    core.STAT &= ~(1 << 2);
   }
 }

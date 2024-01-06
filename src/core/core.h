@@ -35,6 +35,7 @@ public:
     void draw_bg();
     void draw_sprites();
     void draw_scanline();
+    void do_lyc_check();
   };
   PPU ppu{*this};
 
@@ -55,7 +56,7 @@ public:
   uint8_t TMA;
   uint8_t TAC;
   void tick_timers(int ticks);
-  void handle_interrupts();
+  int handle_interrupts();
 
   // memory
   bool bootrom_enabled = true;
@@ -87,6 +88,7 @@ public:
   uint8_t IF;
   uint8_t IE;
   uint8_t LY;
+  uint8_t LYC;
   uint8_t SCX;
   uint8_t SCY;
   uint8_t WX;

@@ -69,7 +69,7 @@ Core::Core(Config config) {
     regs[2] = 0x00d8;
     regs[3] = 0x014d;
     LCDC = 0x91;
-    // TODO: palette
+    BGP = 0xFC;
   } else {
     load_bootrom(config.bootrom_path);
   }
@@ -215,7 +215,7 @@ uint8_t& Core::handle_mmio(uint32_t addr) {
     case 0xFF44:
       return LY;
     case 0xFF45:
-      return STUB;
+      return LYC;
     case 0xFF47:
       return BGP;
     case 0xFF48:
@@ -296,7 +296,7 @@ void Core::tick_timers(int ticks) {
   }
 }
 
-void Core::handle_interrupts() {
+int Core::handle_interrupts() {
   if (IME) {
     for (int i = 0; i < 5; i++) {
       if (BIT(IE, i) && BIT(IF, i)) {
@@ -308,9 +308,12 @@ void Core::handle_interrupts() {
         mem_write<uint16_t>(sp, pc);
 
         pc = int_vectors[i];
+        return 20;
       }
     }
   }
+
+  return 0;
 }
 
 void Core::run_frame() {
@@ -349,15 +352,17 @@ void Core::run_frame() {
         IME = true;
       }
     } else {
-      if (IE != 0 && IF != 0) {
-        HALT = false;
+      for (int i = 0; i < 5; i++) {
+        if (BIT(IE, i) && BIT(IF, i)) {
+          HALT = false;
+        }
       }
       cycles_taken = 4;
     }
+    cycles_taken += handle_interrupts();
 
     ppu.tick(cycles_taken);
     tick_timers(cycles_taken);
-    handle_interrupts();
 
     cycles_to_execute -= cycles_taken;
   }
