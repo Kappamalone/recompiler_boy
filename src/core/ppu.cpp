@@ -46,6 +46,7 @@ void Core::PPU::tick(int cycles) {
             WLC = 0;
             mode = PPUMode::VBlank;
             core.STAT = (core.STAT & 0xFC) | 0b01;
+            core.IF |= 0b1;
 
             if (BIT(core.STAT, 4)) {
               core.IF |= 0b10;

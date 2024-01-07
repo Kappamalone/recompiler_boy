@@ -185,7 +185,6 @@ uint8_t& Core::handle_mmio(uint32_t addr, uint8_t value) {
     case 0xFF01:
       return SB;
     case 0xFF02:
-      printf("%c", SB);
       return STUB;
     case 0xFF05:
       return TIMA;
@@ -223,8 +222,10 @@ uint8_t& Core::handle_mmio(uint32_t addr, uint8_t value) {
       return LYC;
     case 0xFF46:
       if constexpr (Write) {
-        // DMA transfer
-        // PANIC("DMA!\n", value);
+        uint16_t base = (uint16_t)value * 0x100;
+        for (int i = 0; i < 0xA0; i++) {
+          oam[i] = mem_read<uint8_t>(base + i);
+        }
       }
       return STUB;
     case 0xFF47:
@@ -356,6 +357,7 @@ void Core::run_frame() {
                       core.mem_read<uint8_t>(core.pc + 3)));
       */
 
+      // PRINT("{:02X}\n", pc);
       auto opcode = mem_read<uint8_t>(pc++);
       cycles_taken = GBInterpreter::decode_execute(*this, opcode);
 
