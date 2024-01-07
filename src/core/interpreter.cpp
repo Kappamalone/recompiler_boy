@@ -25,21 +25,22 @@ static constexpr uint16_t& get_group_1(Core& core, int gp1) {
   }
 }
 
-static constexpr uint8_t& get_group_2(Core& core, int gp2, bool write = false) {
+template <bool Write = false>
+static constexpr uint8_t& get_group_2(Core& core, int gp2, uint8_t value = 0) {
   switch (gp2) {
     case 0:
-      return core.mem_byte_reference(core.regs[Regs::BC], write);
+      return core.mem_byte_reference<Write>(core.regs[Regs::BC], value);
       break;
     case 1:
-      return core.mem_byte_reference(core.regs[Regs::DE], write);
+      return core.mem_byte_reference<Write>(core.regs[Regs::DE], value);
       break;
     case 2:
       core.regs[Regs::HL]++;
-      return core.mem_byte_reference(core.regs[Regs::HL] - 1, write);
+      return core.mem_byte_reference<Write>(core.regs[Regs::HL] - 1, value);
       break;
     case 3:
       core.regs[Regs::HL]--;
-      return core.mem_byte_reference(core.regs[Regs::HL] + 1, write);
+      return core.mem_byte_reference<Write>(core.regs[Regs::HL] + 1, value);
       break;
     default:
       PANIC("group 2 error!\n");
@@ -67,7 +68,8 @@ static constexpr uint16_t& get_group_3(Core& core, int gp3) {
 }
 
 // NOLINTBEGIN
-static constexpr uint8_t& get_r8(Core& core, int r8, bool write = false) {
+template <bool Write = false>
+static constexpr uint8_t& get_r8(Core& core, int r8, uint8_t value = 0) {
   switch (r8) {
     case 0:
       return reinterpret_cast<uint8_t*>(&core.regs[Regs::BC])[1];
@@ -88,7 +90,7 @@ static constexpr uint8_t& get_r8(Core& core, int r8, bool write = false) {
       return reinterpret_cast<uint8_t*>(&core.regs[Regs::HL])[0];
       break;
     case 6:
-      return core.mem_byte_reference(core.regs[Regs::HL], write);
+      return core.mem_byte_reference<Write>(core.regs[Regs::HL], value);
     case 7:
       return reinterpret_cast<uint8_t*>(&core.regs[Regs::AF])[1];
       break;
@@ -135,35 +137,36 @@ int GBInterpreter::ld_r16_u16(Core& core, int gp1) {
 }
 
 int GBInterpreter::ld_r8_r8(Core& core, int r8_src, int r8_dest) {
-  auto& src = get_r8(core, r8_src, true);
   auto& dest = get_r8(core, r8_dest);
+  auto& src = get_r8<true>(core, r8_src, dest);
   src = dest;
   return 0;
 }
 
 int GBInterpreter::ld_r8_u8(Core& core, int r8_src) {
-  auto& src = get_r8(core, r8_src, true);
   auto imm8 = core.mem_read<uint8_t>(core.pc++);
+  auto& src = get_r8<true>(core, r8_src, imm8);
   src = imm8;
   return 0;
 }
 
 int GBInterpreter::ld_a_r16_addr(Core& core, int gp2) {
-  auto& src = get_r8(core, 7, true);
   auto& dest = get_group_2(core, gp2);
+  auto& src = get_r8<true>(core, 7, dest);
   src = dest;
   return 0;
 }
 
 int GBInterpreter::ld_r16_a_addr(Core& core, int gp2) {
-  auto& src = get_group_2(core, gp2, true);
   auto& dest = get_r8(core, 7);
+  auto& src = get_group_2<true>(core, gp2, dest);
   src = dest;
   return 0;
 }
 
+// POTENTIAL
 int GBInterpreter::inc_r8(Core& core, int r8) {
-  auto& src = get_r8(core, r8, true);
+  auto& src = get_r8(core, r8);
   core.set_flag(Regs::H, (src & 0xf) == 0xf);
   src++;
   core.set_flag(Regs::Z, src == 0);
@@ -172,8 +175,9 @@ int GBInterpreter::inc_r8(Core& core, int r8) {
   return 0;
 }
 
+// POTENTIAL
 int GBInterpreter::dec_r8(Core& core, int r8) {
-  auto& src = get_r8(core, r8, true);
+  auto& src = get_r8(core, r8);
   core.set_flag(Regs::H, (src & 0xf) == 0); // set on borrow...?
   src--;
   core.set_flag(Regs::Z, src == 0);
@@ -182,7 +186,6 @@ int GBInterpreter::dec_r8(Core& core, int r8) {
   return 0;
 }
 
-// MARK
 int GBInterpreter::jr_conditional(Core& core, int condition) {
   auto rel_signed_offest = (int8_t)core.mem_read<uint8_t>(core.pc++);
   if (condition_table(core, condition)) {
@@ -206,13 +209,13 @@ int GBInterpreter::ei(Core& core) {
 int GBInterpreter::ld_u16_a(Core& core) {
   auto load_addr = core.mem_read<uint16_t>(core.pc);
   core.pc += 2;
-  core.mem_byte_reference(load_addr, true) = get_r8(core, 7);
+  core.mem_write<uint8_t>(load_addr, get_r8(core, 7));
   return 0;
 }
 
 int GBInterpreter::ldh_u8_a(Core& core) {
   auto load_addr = core.mem_read<uint8_t>(core.pc++);
-  core.mem_byte_reference(0xff00 + load_addr, true) = get_r8(core, 7);
+  core.mem_write<uint8_t>(0xff00 + load_addr, get_r8(core, 7));
   return 0;
 }
 
@@ -238,7 +241,7 @@ int GBInterpreter::reti(Core& core) {
   auto jump_addr = core.mem_read<uint16_t>(core.sp);
   core.sp += 2;
   core.pc = jump_addr;
-  core.IME = true; // no need to wait a cycle here I guess?
+  core.IME = true;
   return 0;
 }
 
@@ -325,7 +328,6 @@ int GBInterpreter::and_value(Core& core, uint8_t value) {
   return 0;
 }
 
-// MARK
 int GBInterpreter::call_conditional(Core& core, int condition) {
   auto jump_addr = core.mem_read<uint16_t>(core.pc);
   core.pc += 2;
@@ -653,12 +655,14 @@ int GBInterpreter::bit(Core& core, uint8_t r8, uint8_t bit) {
 }
 
 int GBInterpreter::res(Core& core, uint8_t r8, uint8_t bit) {
-  get_r8(core, r8, true) &= ~(1 << bit);
+  auto result = get_r8(core, r8) & ~(1 << bit);
+  get_r8<true>(core, r8, result) = result;
   return 0;
 }
 
 int GBInterpreter::set(Core& core, uint8_t r8, uint8_t bit) {
-  get_r8(core, r8, true) |= (1 << bit);
+  auto result = get_r8(core, r8) | (1 << bit);
+  get_r8<true>(core, r8, result) = result;
   return 0;
 }
 
@@ -708,7 +712,7 @@ int GBInterpreter::ld_a_c(Core& core) {
 }
 
 int GBInterpreter::ld_c_a(Core& core) {
-  core.mem_byte_reference(0xFF00 + get_r8(core, 1), true) = get_r8(core, 7);
+  core.mem_write<uint8_t>(0xff00 + get_r8(core, 1), get_r8(core, 7));
   return 0;
 }
 

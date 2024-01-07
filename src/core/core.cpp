@@ -113,9 +113,8 @@ T Core::mem_read(uint32_t addr) {
     return *(T*)(&hram[addr - 0xFF80]);
   } else if (in_between(0xFE00, 0xFE9F, addr)) {
     return *(T*)(&oam[addr - 0xFE00]);
-
   } else if (in_between(0xFF00, 0xFFFF, addr)) {
-    return handle_mmio(addr, false);
+    return handle_mmio<false>(addr);
   } else {
     PANIC("Unknown memory read at 0x{:08X}\n", addr);
   }
@@ -124,7 +123,8 @@ template uint8_t Core::mem_read<uint8_t>(uint32_t addr);
 template uint16_t Core::mem_read<uint16_t>(uint32_t addr);
 template uint32_t Core::mem_read<uint32_t>(uint32_t addr);
 
-uint8_t& Core::mem_byte_reference(uint32_t addr, bool write) {
+template <bool Write>
+uint8_t& Core::mem_byte_reference(uint32_t addr, uint8_t value) {
   // due to me being lazy, the `write` flag controls if the reference
   // returned is uesd for modification purposes
 
@@ -150,11 +150,13 @@ uint8_t& Core::mem_byte_reference(uint32_t addr, bool write) {
     return STUB;
 
   } else if (in_between(0xFF00, 0xFFFF, addr)) {
-    return handle_mmio(addr, write);
+    return handle_mmio<Write>(addr, value);
   } else {
     PANIC("Unknown memory reference at 0x{:08X}\n", addr);
   }
 }
+template uint8_t& Core::mem_byte_reference<false>(uint32_t addr, uint8_t value);
+template uint8_t& Core::mem_byte_reference<true>(uint32_t addr, uint8_t value);
 
 template <typename T>
 void Core::mem_write(uint32_t addr, T value) {
@@ -164,6 +166,8 @@ void Core::mem_write(uint32_t addr, T value) {
     *(T*)(&wram[addr - 0xC000]) = value;
   } else if (in_between(0xFF80, 0xFFFE, addr)) {
     *(T*)(&hram[addr - 0xFF80]) = value;
+  } else if (in_between(0xFF00, 0xFFFF, addr)) {
+    handle_mmio<true>(addr, value) = value;
   } else {
     PANIC("Unknown memory write at 0x{:08X}\n", addr);
   }
@@ -172,7 +176,8 @@ template void Core::mem_write<uint8_t>(uint32_t addr, uint8_t value);
 template void Core::mem_write<uint16_t>(uint32_t addr, uint16_t value);
 template void Core::mem_write<uint32_t>(uint32_t addr, uint32_t value);
 
-uint8_t& Core::handle_mmio(uint32_t addr, bool write) {
+template <bool Write>
+uint8_t& Core::handle_mmio(uint32_t addr, uint8_t value) {
   switch (addr) {
     case 0xFF00:
       STUB = 0xff;
@@ -216,6 +221,12 @@ uint8_t& Core::handle_mmio(uint32_t addr, bool write) {
       return LY;
     case 0xFF45:
       return LYC;
+    case 0xFF46:
+      if constexpr (Write) {
+        // DMA transfer
+        // PANIC("DMA!\n", value);
+      }
+      return STUB;
     case 0xFF47:
       return BGP;
     case 0xFF48:
@@ -233,6 +244,8 @@ uint8_t& Core::handle_mmio(uint32_t addr, bool write) {
       return STUB;
   }
 }
+template uint8_t& Core::handle_mmio<false>(uint32_t addr, uint8_t value);
+template uint8_t& Core::handle_mmio<true>(uint32_t addr, uint8_t value);
 
 bool Core::get_flag(Regs::Flag f) {
   switch (f) {

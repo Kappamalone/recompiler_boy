@@ -73,10 +73,12 @@ public:
   // memory read/write functions
   template <typename T>
   T mem_read(uint32_t addr);
-  uint8_t& mem_byte_reference(uint32_t addr, bool write = false);
+  template <bool Write = false>
+  uint8_t& mem_byte_reference(uint32_t addr, uint8_t value = 0);
   template <typename T>
   void mem_write(uint32_t addr, T value);
-  uint8_t& handle_mmio(uint32_t addr, bool write);
+  template <bool Write>
+  uint8_t& handle_mmio(uint32_t addr, uint8_t value = 0);
 
   // cartridge functions
   void load_bootrom(const char* path);
