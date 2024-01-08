@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "config.h"
+#include "mbc.h"
 #include <array>
 #include <cstdint>
 
@@ -39,6 +40,7 @@ public:
     void do_lyc_check();
   };
   PPU ppu{*this};
+  MBC mbc;
 
   // registers
   uint16_t pc = 0;

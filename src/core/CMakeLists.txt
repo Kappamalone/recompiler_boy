@@ -7,6 +7,8 @@ set(SOURCES
     interpreter.cpp
     ppu.cpp
     config.h
+    mbc.cpp
+    mbc.h
 )
 
 add_library(core ${SOURCES})

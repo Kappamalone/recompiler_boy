@@ -1,6 +1,7 @@
 #include "core.h"
 #include "common.h"
 #include "interpreter.h"
+#include "mbc.h"
 #include <cstdint>
 #include <fstream>
 #include <iostream>
@@ -25,7 +26,8 @@ static void append_to_logging(const std::string& content) {
   }
 }
 
-Core::Core(Config config, std::vector<bool>& input) : input(input) {
+Core::Core(Config config, std::vector<bool>& input)
+    : input(input), mbc(*this, config.rom_path) {
   // create_logging_file("../../logging.txt");
   fb.pixels.resize(fb.width * fb.height * 4);
   input.resize(8);
@@ -72,11 +74,7 @@ void Core::load_bootrom(const char* path) {
   if (!file.is_open()) {
     PANIC("Error opening file: {}\n", path);
   }
-  file.read((char*)(bank00.data()), sizeof(uint8_t) * 0x100);
-}
-
-static constexpr bool in_between(uint32_t start, uint32_t end, uint32_t addr) {
-  return addr >= start && addr <= end;
+  file.read((char*)(bootrom.data()), sizeof(uint8_t) * 0x100);
 }
 
 // NOTE: Type punning is used for reading and writing. This is not portable to a
@@ -84,14 +82,16 @@ static constexpr bool in_between(uint32_t start, uint32_t end, uint32_t addr) {
 
 template <typename T>
 T Core::mem_read(uint16_t addr) {
-  if (in_between(0x0000, 0x3FFF, addr)) {
-    return *(T*)(&bank00[addr]);
-  } else if (in_between(0x4000, 0x7FFF, addr)) {
-    return *(T*)(&bank01[addr - 0x4000]);
+  if (in_between(0x0000, 0x7FFF, addr)) {
+    if (bootrom_enabled && in_between(0, 0x100, addr)) {
+      return *(T*)(&bootrom[addr]);
+    } else {
+      return mbc.mem_reference<false, T>(addr);
+    }
   } else if (in_between(0x8000, 0x9FFF, addr)) {
     return *(T*)(&vram[addr - 0x8000]);
   } else if (in_between(0xA000, 0xBFFF, addr)) {
-    return *(T*)(&ext_ram[addr - 0xA000]);
+    return mbc.mem_reference<false, T>(addr);
   } else if (in_between(0xC000, 0xDFFF, addr)) {
     return *(T*)(&wram[addr - 0xC000]);
   } else if (in_between(0xE000, 0xFDFF, addr)) {
@@ -117,17 +117,18 @@ uint8_t& Core::mem_byte_reference(uint16_t addr, uint8_t value) {
   // due to me being lazy, the `write` flag controls if the reference
   // returned is uesd for modification purposes
 
-  if (in_between(0x0000, 0x3FFF, addr)) {
-    return bank00[addr];
-
-  } else if (in_between(0x4000, 0x7FFF, addr)) {
-    return bank01[addr - 0x4000];
+  if (in_between(0x0000, 0x7FFF, addr)) {
+    if (bootrom_enabled && in_between(0, 0x100, addr)) {
+      return bootrom[addr];
+    } else {
+      return mbc.mem_reference<Write, uint8_t>(addr, value);
+    }
 
   } else if (in_between(0x8000, 0x9FFF, addr)) {
     return vram[addr - 0x8000];
 
   } else if (in_between(0xA000, 0xBFFF, addr)) {
-    return ext_ram[addr - 0xA000];
+    return mbc.mem_reference<false, uint8_t>(addr);
 
   } else if (in_between(0xC000, 0xDFFF, addr)) {
     return wram[addr - 0xC000];
@@ -155,14 +156,12 @@ template uint8_t& Core::mem_byte_reference<true>(uint16_t addr, uint8_t value);
 
 template <typename T>
 void Core::mem_write(uint16_t addr, T value) {
-  if (in_between(0x0000, 0x3FFF, addr)) {
-    // *(T*)(&bank00[addr]) = value;
-  } else if (in_between(0x4000, 0x7FFF, addr)) {
-    // *(T*)(&bank01[addr - 0x4000]) = value;
+  if (in_between(0x0000, 0x7FFF, addr)) {
+    mbc.mem_reference<true, T>(addr, value) = value;
   } else if (in_between(0x8000, 0x9FFF, addr)) {
     *(T*)(&vram[addr - 0x8000]) = value;
   } else if (in_between(0xA000, 0xBFFF, addr)) {
-    *(T*)(&ext_ram[addr - 0xA000]) = value;
+    mbc.mem_reference<true, T>(addr, value) = value;
   } else if (in_between(0xC000, 0xDFFF, addr)) {
     *(T*)(&wram[addr - 0xC000]) = value;
   } else if (in_between(0xFE00, 0xFE9F, addr)) {
@@ -226,7 +225,11 @@ uint8_t& Core::handle_mmio(uint16_t addr, uint8_t value) {
     case 0xFF14:
       return STUB;
     case 0xFF50:
-      // TODO: this should unload the bootrom
+      if constexpr (Write) {
+        if (value != 0) {
+          bootrom_enabled = false;
+        }
+      }
       return STUB;
     case 0xFF0F:
       return IF;

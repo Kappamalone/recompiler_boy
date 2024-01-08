@@ -28,3 +28,8 @@
 // bit manipulation
 #define BIT(VALUE, POS) ((VALUE >> (POS)) & 1)
 #define BIT_REGION(VALUE, POS, SIZE) (VALUE >> POS) & ((((uint64_t)1 << SIZE)-1))
+
+static constexpr bool in_between(uint32_t start, uint32_t end, uint32_t addr) {
+  return addr >= start && addr <= end;
+}
+
