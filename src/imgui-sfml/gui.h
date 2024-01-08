@@ -105,11 +105,11 @@ private:
   }
 
 public:
-  Frontend(Config config)
-      : window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), WINDOW_NAME),
-        core(
+  explicit Frontend(Config config)
+      : core(
             config, [this]() { return wait_for_ui_thread(); },
-            [this]() { return ping_ui_thread(); }) {
+            [this]() { return ping_ui_thread(); }),
+        window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), WINDOW_NAME) {
 
     core_thread = std::thread([this]() { core.run(); });
 

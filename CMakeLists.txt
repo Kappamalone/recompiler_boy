@@ -59,6 +59,8 @@ else()
         -Wno-missing-braces
         )
 
+      # set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=memory -fno-omit-frame-pointer")
+
     if (${PROJECT_NAME}_WARNINGS_AS_ERRORS)
         list(APPEND CXX_FLAGS
              -Werror)
