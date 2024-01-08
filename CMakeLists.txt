@@ -56,7 +56,8 @@ else()
         -Wcast-qual
         -pedantic
         -pedantic-errors
-        -Wno-missing-braces)
+        -Wno-missing-braces
+        )
 
     if (${PROJECT_NAME}_WARNINGS_AS_ERRORS)
         list(APPEND CXX_FLAGS

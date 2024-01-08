@@ -41,21 +41,21 @@ public:
   PPU ppu{*this};
 
   // registers
-  uint16_t pc;
-  uint16_t sp;
-  bool IME;
-  bool req_IME;
-  bool HALT;
+  uint16_t pc = 0;
+  uint16_t sp = 0;
+  bool IME = false;
+  bool req_IME = false;
+  bool HALT = false;
   // AF, BC, DE, HL
   std::array<uint16_t, 4> regs{};
   bool get_flag(Regs::Flag f);
   void set_flag(Regs::Flag f, bool value);
 
   // timers
-  uint8_t DIV;
-  uint8_t TIMA;
-  uint8_t TMA;
-  uint8_t TAC;
+  uint8_t DIV = 0;
+  uint8_t TIMA = 0;
+  uint8_t TMA = 0;
+  uint8_t TAC = 0;
   void tick_timers(int ticks);
   int handle_interrupts();
 
@@ -72,37 +72,42 @@ public:
 
   // memory read/write functions
   template <typename T>
-  T mem_read(uint32_t addr);
+  T mem_read(uint16_t addr);
   template <bool Write = false>
-  uint8_t& mem_byte_reference(uint32_t addr, uint8_t value = 0);
+  uint8_t& mem_byte_reference(uint16_t addr, uint8_t value = 0);
   template <typename T>
-  void mem_write(uint32_t addr, T value);
+  void mem_write(uint16_t addr, T value);
   template <bool Write>
-  uint8_t& handle_mmio(uint32_t addr, uint8_t value = 0);
+  uint8_t& handle_mmio(uint16_t addr, uint8_t value = 0);
 
   // cartridge functions
   void load_bootrom(const char* path);
   void load_rom(const char* path);
 
   // mmio
-  uint8_t LCDC;
-  uint8_t STAT;
-  uint8_t SB;
-  uint8_t IF;
-  uint8_t IE;
-  uint8_t LY;
-  uint8_t LYC;
-  uint8_t SCX;
-  uint8_t SCY;
-  uint8_t WX;
-  uint8_t WY;
-  uint8_t BGP;
-  uint8_t OBP0;
-  uint8_t OBP1;
-  uint8_t STUB;
+  uint8_t STUB = 0;
+  uint8_t LCDC = 0;
+  uint8_t STAT = 0;
+  uint8_t SB = 0;
+  uint8_t IF = 0;
+  uint8_t IE = 0;
+  uint8_t LY = 0;
+  uint8_t LYC = 0;
+  uint8_t SCX = 0;
+  uint8_t SCY = 0;
+  uint8_t WX = 0;
+  uint8_t WY = 0;
+  uint8_t BGP = 0;
+  uint8_t OBP0 = 0;
+  uint8_t OBP1 = 0;
+  uint8_t JOYP_WRITE = 0;
+  uint8_t JOYP_READ = 0;
 
 public:
-  Core(Config config);
+  Core(Config config, std::vector<bool>& input);
   void run_frame();
   [[nodiscard]] const auto& get_fb_ref() const { return fb; }
+
+  std::vector<bool>& input;
+  enum class Input { UP = 0, DOWN, LEFT, RIGHT, START, SELECT, A, B };
 };

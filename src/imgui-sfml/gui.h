@@ -1,4 +1,5 @@
 #pragma once
+#include "SFML/Window/Keyboard.hpp"
 #include "common.h"
 #include "core_wrapper.h"
 #include "imgui-SFML.h"
@@ -42,10 +43,42 @@ private:
         case sf::Event::KeyPressed:
           if (event.key.code == sf::Keyboard::F) {
             toggle_frame_limiter();
+          } else if (event.key.code == sf::Keyboard::Up) {
+            core.input[(int)Core::Input::UP] = true;
+          } else if (event.key.code == sf::Keyboard::Down) {
+            core.input[(int)Core::Input::DOWN] = true;
+          } else if (event.key.code == sf::Keyboard::Left) {
+            core.input[(int)Core::Input::LEFT] = true;
+          } else if (event.key.code == sf::Keyboard::Right) {
+            core.input[(int)Core::Input::RIGHT] = true;
+          } else if (event.key.code == sf::Keyboard::A) {
+            core.input[(int)Core::Input::A] = true;
+          } else if (event.key.code == sf::Keyboard::S) {
+            core.input[(int)Core::Input::B] = true;
+          } else if (event.key.code == sf::Keyboard::D) {
+            core.input[(int)Core::Input::SELECT] = true;
+          } else if (event.key.code == sf::Keyboard::C) {
+            core.input[(int)Core::Input::START] = true;
           }
           break;
         case sf::Event::KeyReleased:
-          break;
+          if (event.key.code == sf::Keyboard::Up) {
+            core.input[(int)Core::Input::UP] = false;
+          } else if (event.key.code == sf::Keyboard::Down) {
+            core.input[(int)Core::Input::DOWN] = false;
+          } else if (event.key.code == sf::Keyboard::Left) {
+            core.input[(int)Core::Input::LEFT] = false;
+          } else if (event.key.code == sf::Keyboard::Right) {
+            core.input[(int)Core::Input::RIGHT] = false;
+          } else if (event.key.code == sf::Keyboard::A) {
+            core.input[(int)Core::Input::A] = false;
+          } else if (event.key.code == sf::Keyboard::S) {
+            core.input[(int)Core::Input::B] = false;
+          } else if (event.key.code == sf::Keyboard::D) {
+            core.input[(int)Core::Input::SELECT] = false;
+          } else if (event.key.code == sf::Keyboard::C) {
+            core.input[(int)Core::Input::START] = false;
+          }
         default:
           break;
       }
@@ -81,7 +114,10 @@ public:
     core_thread = std::thread([this]() { core.run(); });
 
     window.setFramerateLimit(60);
-    ImGui::SFML::Init(window);
+    auto success = ImGui::SFML::Init(window);
+    if (!success) {
+      PANIC("Failed to open window!\n");
+    }
     texture.create(core.get_fb_ref().width, core.get_fb_ref().height);
     sprite.setTexture(texture);
     sprite.setScale(WINDOW_WIDTH / sprite.getLocalBounds().width,

@@ -14,7 +14,7 @@ static void create_logging_file(const std::string& filename) {
   }
 }
 
-void append_to_logging(const std::string& content) {
+static void append_to_logging(const std::string& content) {
   std::ofstream file("../logging.txt", std::ios::app);
 
   if (file.is_open()) {
@@ -25,17 +25,10 @@ void append_to_logging(const std::string& content) {
   }
 }
 
-Core::Core(Config config) {
+Core::Core(Config config, std::vector<bool>& input) : input(input) {
+  // create_logging_file("../../logging.txt");
   fb.pixels.resize(fb.width * fb.height * 4);
-  // logging:
-  create_logging_file("../../logging.txt");
-
-  // registers
-  pc = 0x00;
-  sp = 0x00;
-  IME = false;
-  req_IME = false;
-  HALT = false;
+  input.resize(8);
   regs.fill(0);
 
   // memory
@@ -47,16 +40,6 @@ Core::Core(Config config) {
   wram.resize(0x2000);
   oam.resize(0xA0);
   hram.resize(0x7f);
-
-  // mmio
-  LCDC = 0;
-  SB = 0;
-  TAC = 0;
-  IF = 0;
-  IE = 0;
-  LY = 0;
-  SB = 0;
-  TMA = 0;
 
   load_rom(config.rom_path);
   if (config.bootrom_path == nullptr) {
@@ -100,31 +83,37 @@ static constexpr bool in_between(uint32_t start, uint32_t end, uint32_t addr) {
 // BE host sytem
 
 template <typename T>
-T Core::mem_read(uint32_t addr) {
+T Core::mem_read(uint16_t addr) {
   if (in_between(0x0000, 0x3FFF, addr)) {
     return *(T*)(&bank00[addr]);
   } else if (in_between(0x4000, 0x7FFF, addr)) {
     return *(T*)(&bank01[addr - 0x4000]);
   } else if (in_between(0x8000, 0x9FFF, addr)) {
     return *(T*)(&vram[addr - 0x8000]);
+  } else if (in_between(0xA000, 0xBFFF, addr)) {
+    return *(T*)(&ext_ram[addr - 0xA000]);
   } else if (in_between(0xC000, 0xDFFF, addr)) {
     return *(T*)(&wram[addr - 0xC000]);
+  } else if (in_between(0xE000, 0xFDFF, addr)) {
+    return *(T*)(&wram[addr - 0xE000]);
   } else if (in_between(0xFF80, 0xFFFE, addr)) {
     return *(T*)(&hram[addr - 0xFF80]);
   } else if (in_between(0xFE00, 0xFE9F, addr)) {
     return *(T*)(&oam[addr - 0xFE00]);
+  } else if (in_between(0xFEA0, 0xFEFF, addr)) {
+    return STUB;
   } else if (in_between(0xFF00, 0xFFFF, addr)) {
     return handle_mmio<false>(addr);
   } else {
     PANIC("Unknown memory read at 0x{:08X}\n", addr);
   }
 }
-template uint8_t Core::mem_read<uint8_t>(uint32_t addr);
-template uint16_t Core::mem_read<uint16_t>(uint32_t addr);
-template uint32_t Core::mem_read<uint32_t>(uint32_t addr);
+template uint8_t Core::mem_read<uint8_t>(uint16_t addr);
+template uint16_t Core::mem_read<uint16_t>(uint16_t addr);
+template uint32_t Core::mem_read<uint32_t>(uint16_t addr);
 
 template <bool Write>
-uint8_t& Core::mem_byte_reference(uint32_t addr, uint8_t value) {
+uint8_t& Core::mem_byte_reference(uint16_t addr, uint8_t value) {
   // due to me being lazy, the `write` flag controls if the reference
   // returned is uesd for modification purposes
 
@@ -137,8 +126,14 @@ uint8_t& Core::mem_byte_reference(uint32_t addr, uint8_t value) {
   } else if (in_between(0x8000, 0x9FFF, addr)) {
     return vram[addr - 0x8000];
 
+  } else if (in_between(0xA000, 0xBFFF, addr)) {
+    return ext_ram[addr - 0xA000];
+
   } else if (in_between(0xC000, 0xDFFF, addr)) {
     return wram[addr - 0xC000];
+
+  } else if (in_between(0xE000, 0xFDFF, addr)) {
+    return wram[addr - 0xE000];
 
   } else if (in_between(0xFF80, 0xFFFE, addr)) {
     return hram[addr - 0xFF80];
@@ -155,37 +150,70 @@ uint8_t& Core::mem_byte_reference(uint32_t addr, uint8_t value) {
     PANIC("Unknown memory reference at 0x{:08X}\n", addr);
   }
 }
-template uint8_t& Core::mem_byte_reference<false>(uint32_t addr, uint8_t value);
-template uint8_t& Core::mem_byte_reference<true>(uint32_t addr, uint8_t value);
+template uint8_t& Core::mem_byte_reference<false>(uint16_t addr, uint8_t value);
+template uint8_t& Core::mem_byte_reference<true>(uint16_t addr, uint8_t value);
 
 template <typename T>
-void Core::mem_write(uint32_t addr, T value) {
+void Core::mem_write(uint16_t addr, T value) {
   if (in_between(0x0000, 0x3FFF, addr)) {
-    *(T*)(&bank00[addr]) = value;
+    // *(T*)(&bank00[addr]) = value;
+  } else if (in_between(0x4000, 0x7FFF, addr)) {
+    // *(T*)(&bank01[addr - 0x4000]) = value;
+  } else if (in_between(0x8000, 0x9FFF, addr)) {
+    *(T*)(&vram[addr - 0x8000]) = value;
+  } else if (in_between(0xA000, 0xBFFF, addr)) {
+    *(T*)(&ext_ram[addr - 0xA000]) = value;
   } else if (in_between(0xC000, 0xDFFF, addr)) {
     *(T*)(&wram[addr - 0xC000]) = value;
+  } else if (in_between(0xFE00, 0xFE9F, addr)) {
+    *(T*)(&oam[addr - 0xFE00]) = value;
   } else if (in_between(0xFF80, 0xFFFE, addr)) {
     *(T*)(&hram[addr - 0xFF80]) = value;
+  } else if (in_between(0xFEA0, 0xFEFF, addr)) {
+    return;
   } else if (in_between(0xFF00, 0xFFFF, addr)) {
     handle_mmio<true>(addr, value) = value;
   } else {
-    PANIC("Unknown memory write at 0x{:08X}\n", addr);
+    PANIC("Unknown memory write at 0x{:04X}\n", addr);
   }
 }
-template void Core::mem_write<uint8_t>(uint32_t addr, uint8_t value);
-template void Core::mem_write<uint16_t>(uint32_t addr, uint16_t value);
-template void Core::mem_write<uint32_t>(uint32_t addr, uint32_t value);
+template void Core::mem_write<uint8_t>(uint16_t addr, uint8_t value);
+template void Core::mem_write<uint16_t>(uint16_t taddr, uint16_t value);
+template void Core::mem_write<uint32_t>(uint16_t addr, uint32_t value);
 
 template <bool Write>
-uint8_t& Core::handle_mmio(uint32_t addr, uint8_t value) {
+uint8_t& Core::handle_mmio(uint16_t addr, uint8_t value) {
   switch (addr) {
     case 0xFF00:
-      STUB = 0xff;
-      return STUB;
+      // first we are written to, to select which part of the input we are
+      // showing
+      if constexpr (Write) {
+        return JOYP_WRITE;
+      } else {
+        if (!BIT(JOYP_WRITE, 4) && !BIT(JOYP_WRITE, 5)) {
+          JOYP_READ = 0xF;
+        } else if (!BIT(JOYP_WRITE, 4)) {
+          // Select d-pad
+          JOYP_READ = !input[(int)Input::DOWN] << 3 |
+                      !input[(int)Input::UP] << 2 |
+                      !input[(int)Input::LEFT] << 1 | !input[(int)Input::RIGHT];
+        } else if (!BIT(JOYP_WRITE, 5)) {
+          // Select buttons
+          JOYP_READ = !input[(int)Input::START] << 3 |
+                      !input[(int)Input::SELECT] << 2 |
+                      !input[(int)Input::B] << 1 | !input[(int)Input::A];
+        }
+        return JOYP_READ;
+      }
     case 0xFF01:
       return SB;
     case 0xFF02:
       return STUB;
+    case 0xFF04:
+      if constexpr (Write) {
+        DIV = 0;
+      }
+      return DIV;
     case 0xFF05:
       return TIMA;
     case 0xFF06:
@@ -245,8 +273,8 @@ uint8_t& Core::handle_mmio(uint32_t addr, uint8_t value) {
       return STUB;
   }
 }
-template uint8_t& Core::handle_mmio<false>(uint32_t addr, uint8_t value);
-template uint8_t& Core::handle_mmio<true>(uint32_t addr, uint8_t value);
+template uint8_t& Core::handle_mmio<false>(uint16_t addr, uint8_t value);
+template uint8_t& Core::handle_mmio<true>(uint16_t addr, uint8_t value);
 
 bool Core::get_flag(Regs::Flag f) {
   switch (f) {

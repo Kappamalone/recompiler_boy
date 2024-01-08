@@ -20,7 +20,7 @@ private:
 public:
   CoreWrapper(Config config, std::function<void()> start,
               std::function<void()> end)
-      : core(config), wait_for_ui_thread(std::move(start)),
+      : input(8), core(config, input), wait_for_ui_thread(std::move(start)),
         ping_ui_thread(std::move(end)) {}
 
   void run() {
@@ -46,4 +46,5 @@ public:
   [[nodiscard]] const auto& get_fb_ref() const { return core.get_fb_ref(); }
   [[nodiscard]] auto get_frame_time() const { return frame_time; }
   [[nodiscard]] const Core& get_core_ref() const { return core; }
+  std::vector<bool> input;
 };
