@@ -31,6 +31,7 @@ MBC::MBC(Core& core, const char* rom_path) : core(core) {
   file.seekg(0x148);
   file.read((char*)&rom_size, 1);
   rom.resize(rom_size_map[rom_size]);
+  PRINT("ROM SIZE: {}\n", rom_size);
   file.seekg(0);
   file.read((char*)(rom.data()), sizeof(uint8_t) * rom_size_map[rom_size]);
 
@@ -45,7 +46,7 @@ T& MBC::mem_reference(uint16_t addr, uint8_t value) {
     if (in_between(0x0000, 0x7FFF, addr)) {
       // handle MBC registers
       if (in_between(0x2000, 0x3FFF, addr)) {
-        mbc1regs.rom_bank_number = value;
+        mbc1regs.rom_bank_number = value & 0x1f;
       }
     } else if (in_between(0xA000, 0xBFFF, addr)) {
       // write to external RAM
@@ -59,8 +60,11 @@ T& MBC::mem_reference(uint16_t addr, uint8_t value) {
       return *(T*)(&rom[addr]);
 
     } else if (in_between(0x4000, 0x7FFF, addr)) {
-      int bank = (mbc1regs.rom_bank_number & 0x1f);
-      uint16_t new_addr = (addr - 0x4000) + (std::max(1, bank) * 0x4000);
+      uint32_t bank =
+          (mbc1regs.rom_bank_number) == 0
+              ? 1
+              : mbc1regs.rom_bank_number & (~(0xff << (rom_size + 1)));
+      uint32_t new_addr = (addr - 0x4000) + (bank * 0x4000);
       return *(T*)(&rom[new_addr]);
 
     } else if (in_between(0xA000, 0xBFFF, addr)) {
