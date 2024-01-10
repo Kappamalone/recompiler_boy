@@ -11,7 +11,7 @@ static constexpr int CYCLES_PER_FRAME = 69905;
 
 class GBInterpreter {
 public:
-  static int decode_execute(Core& core, uint16_t opcode);
+  static int decode_execute(Core& core);
 
   static int jp_u16(Core& core);
   static int ld_r8_r8(Core& core, int r8_src, int r8_dest);

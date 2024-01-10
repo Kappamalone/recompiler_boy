@@ -75,3 +75,4 @@ endif()
 
 add_subdirectory(src)
 add_subdirectory(externals)
+include_directories(${PROJECT_SOURCE_DIR}/externals/xbyak) 

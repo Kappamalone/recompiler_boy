@@ -1,4 +1,5 @@
 add_subdirectory(fmt)
+add_subdirectory(xbyak)
 
 
 # SFML, ImGui and SFML-ImGui

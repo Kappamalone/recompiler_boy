@@ -721,7 +721,8 @@ int GBInterpreter::halt(Core& core) {
   return 0;
 }
 
-int GBInterpreter::decode_execute(Core& core, uint16_t opcode) {
+int GBInterpreter::decode_execute(Core& core) {
+  auto opcode = core.mem_read<uint8_t>(core.pc++);
   int cycles_taken = regular_instr_timing[opcode] * 4;
   if (opcode == 0x00) {
     // do nothing...

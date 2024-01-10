@@ -16,4 +16,4 @@ set(SOURCES
 
 add_library(core ${SOURCES})
 target_include_directories(core PUBLIC .)
-target_link_libraries(core PUBLIC fmt) # public so that we can access common.h 
+target_link_libraries(core PUBLIC fmt xbyak) # public so that we can access common.h 

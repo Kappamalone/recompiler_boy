@@ -370,11 +370,10 @@ void Core::run_frame() {
     int cycles_taken = 0;
 
     if (!HALT) {
-      auto opcode = mem_read<uint8_t>(pc++);
-      cycles_taken = GBInterpreter::decode_execute(*this, opcode);
+      cycles_taken = GBInterpreter::decode_execute(*this);
 
       // enable interrupt from EI after the next instruction
-      if (req_IME && opcode != 0xFB) {
+      if (req_IME) {
         req_IME = false;
         IME = true;
       }

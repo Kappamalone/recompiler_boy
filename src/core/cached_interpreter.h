@@ -1,4 +1,5 @@
 #pragma once
+#include "common_recompiler.h"
 #include "core.h"
 
 // a cached interpreter/dynamic recompiler's general flow works like this:
@@ -23,5 +24,6 @@
 // -> Interrupts (do they need to be serviced as soon as requested?)
 
 class GBCachedInterpreter {
-  static int decode_execute(Core& core, uint16_t opcode);
+public:
+  static int decode_execute(Core& core);
 };
