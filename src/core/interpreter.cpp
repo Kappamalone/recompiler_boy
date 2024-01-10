@@ -745,6 +745,9 @@ int GBInterpreter::decode_execute(Core& core, uint16_t opcode) {
   int cycles_taken = regularInstructionTiming[opcode] * 4;
   if (opcode == 0x00) {
     // do nothing...
+  } else if (opcode == 0x10) {
+    core.pc++; // STOP is two bytes long, doesn't do anything
+
   } else if (opcode == 0b0000'1000) {
     cycles_taken += ld_u16_sp(core);
 
