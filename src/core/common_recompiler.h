@@ -3,23 +3,27 @@
 #include <xbyak/xbyak.h>
 
 using namespace Xbyak::util;
-using fp = int (*)();
+using block_fp = int (*)();
 // using interpreterfp = void (*)(Core&, uint16_t);
 
 // The entire code emitter. God bless xbyak
 
-constexpr int cache_size = 64 * 1024 * 1024;
-
-// If currentCacheSize + cacheLeeway > cacheSize, reset cache
-constexpr int cache_leeway = 1024;
-uint8_t cache[cache_size]; // emitted code cache
 class x64Emitter : public Xbyak::CodeGenerator {
+  static constexpr int CACHE_SIZE = 64 * 1024 * 1024;
+
+  // If current_cache_size + cache_leeway > cache_size, reset cache
+  static constexpr int CACHE_LEEWAY = 1024;
+
 public:
-  x64Emitter() : CodeGenerator(cache_size) { // Initialize emitter and memory
+  // emitted code cache
+  uint8_t cache[CACHE_SIZE] = {};
+  x64Emitter() : CodeGenerator(CACHE_SIZE) { // Initialize emitter and memory
     setProtectMode(
         PROTECT_RWE); // Mark emitter memory as readadable/writeable/executable
   }
 };
 
-constexpr int pageSize = 32; // size of cache pages
-constexpr int pageShift = 5; // shift required to get page froma given address
+// size of cache pages
+constexpr int PAGE_SIZE = 32;
+// shift required to get page from a given address = ctz(page_size)
+constexpr int PAGE_SHIFT = 5;

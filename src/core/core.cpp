@@ -1,4 +1,5 @@
 #include "core.h"
+#include "cached_interpreter.h"
 #include "common.h"
 #include "interpreter.h"
 #include "mbc.h"
@@ -370,7 +371,7 @@ void Core::run_frame() {
     int cycles_taken = 0;
 
     if (!HALT) {
-      cycles_taken = GBInterpreter::decode_execute(*this);
+      cycles_taken = GBCachedInterpreter::decode_execute(*this);
 
       // enable interrupt from EI after the next instruction
       if (req_IME) {

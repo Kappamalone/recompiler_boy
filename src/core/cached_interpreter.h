@@ -24,6 +24,14 @@
 // -> Interrupts (do they need to be serviced as soon as requested?)
 
 class GBCachedInterpreter {
+  inline static block_fp* block_page_table[0xffff >> PAGE_SHIFT];
+  inline static x64Emitter code;
+
+  // Get offset from a variable to the cpu core
+  static uintptr_t inline get_offset(Core& core, void* variable) {
+    return (uintptr_t)variable - (uintptr_t)&core;
+  }
+
 public:
   static int decode_execute(Core& core);
 };

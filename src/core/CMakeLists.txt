@@ -9,9 +9,9 @@ set(SOURCES
     config.h
     mbc.cpp
     mbc.h
+    common_recompiler.h
     cached_interpreter.h
     cached_interpreter.cpp
-    common_recompiler.h
 )
 
 add_library(core ${SOURCES})
