@@ -370,25 +370,6 @@ void Core::run_frame() {
     int cycles_taken = 0;
 
     if (!HALT) {
-
-      auto& core = *this;
-      /*
-      append_to_logging(
-          fmt::format("A: {:02X} F: {:02X} B: {:02X} C: {:02X} D: "
-                      "{:02X} E: {:02X} H: {:02X} L: {:02X} SP: {:04X} PC: "
-                      "00:{:04X} ({:02X} "
-                      "{:02X} {:02X} {:02X})\n",
-                      core.regs[Regs::AF] >> 8, core.regs[Regs::AF] & 0xff,
-                      core.regs[Regs::BC] >> 8, core.regs[Regs::BC] & 0xff,
-                      core.regs[Regs::DE] >> 8, core.regs[Regs::DE] & 0xff,
-                      core.regs[Regs::HL] >> 8, core.regs[Regs::HL] & 0xff,
-                      core.sp, core.pc, core.mem_read<uint8_t>(core.pc),
-                      core.mem_read<uint8_t>(core.pc + 1),
-                      core.mem_read<uint8_t>(core.pc + 2),
-                      core.mem_read<uint8_t>(core.pc + 3)));
-      */
-
-      // PRINT("{:02X}\n", pc);
       auto opcode = mem_read<uint8_t>(pc++);
       cycles_taken = GBInterpreter::decode_execute(*this, opcode);
 
