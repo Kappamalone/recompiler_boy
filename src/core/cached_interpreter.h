@@ -23,6 +23,8 @@
 //
 // -> Interrupts (do they need to be serviced as soon as requested?)
 
+using no_params_fp = int (*)(Core&);
+
 class GBCachedInterpreter {
   inline static block_fp* block_page_table[0xffff >> PAGE_SHIFT];
   inline static x64Emitter code;
@@ -46,5 +48,6 @@ public:
   static void emit_prologue(Core& core);
   static void emit_epilogue(Core& core);
   static block_fp recompile_block(Core& core);
+  static void emit_fallback_no_params(no_params_fp fallback, Core& core);
   static int decode_execute(Core& core);
 };
