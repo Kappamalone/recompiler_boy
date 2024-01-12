@@ -36,6 +36,7 @@ public:
   static int inc_r16(Core& core, uint8_t gp1);
   static int dec_r16(Core& core, uint8_t gp1);
   static int or_a_value(Core& core, uint8_t value);
+  static int or_a_r8(Core& core, uint8_t r8);
   static int ldh_a_u8(Core& core);
   static int cp_value(Core& core, uint8_t value);
   static int ld_a_u16(Core& core);

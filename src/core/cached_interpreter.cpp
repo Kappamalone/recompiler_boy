@@ -96,7 +96,7 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
   // PC. However, we still have to account for conditional cycles
 
   while (true) {
-    PRINT("DYN PC: 0x{:04X}\n", dyn_pc);
+    // PRINT("DYN PC: 0x{:04X}\n", dyn_pc);
     const auto initial_dyn_pc = dyn_pc;
     const auto opcode = core.mem_read<uint8_t>(dyn_pc++);
     code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
@@ -196,8 +196,8 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
                                opcode & 0x7);
 
     } else if (opcode >> 3 == 0b10110) {
-      emit_fallback_one_params(GBInterpreter::or_a_value, core,
-                               get_r8(core, opcode & 0x7));
+      // FIXME: get_r8 will not work because we are in compile time land!!
+      emit_fallback_one_params(GBInterpreter::or_a_r8, core, opcode & 0x7);
 
     } else if (opcode >> 3 == 0b10101) {
       emit_fallback_one_params(GBInterpreter::xor_value, core,

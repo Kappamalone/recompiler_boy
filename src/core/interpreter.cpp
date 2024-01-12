@@ -281,12 +281,23 @@ int GBInterpreter::inc_r16(Core& core, uint8_t gp1) {
 
 int GBInterpreter::dec_r16(Core& core, uint8_t gp1) {
   get_group_1(core, gp1)--;
+  PRINT("0x{:04X}\n", core.regs[Regs::BC]);
   return 0;
 }
 
 int GBInterpreter::or_a_value(Core& core, uint8_t value) {
   auto& acc = get_r8(core, 7);
   acc |= value;
+  core.set_flag(Regs::Flag::Z, acc == 0);
+  core.set_flag(Regs::Flag::N, false);
+  core.set_flag(Regs::Flag::H, false);
+  core.set_flag(Regs::Flag::C, false);
+  return 0;
+}
+
+int GBInterpreter::or_a_r8(Core& core, uint8_t r8) {
+  auto& acc = get_r8(core, 7);
+  acc |= get_r8(core, r8);
   core.set_flag(Regs::Flag::Z, acc == 0);
   core.set_flag(Regs::Flag::N, false);
   core.set_flag(Regs::Flag::H, false);

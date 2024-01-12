@@ -23,9 +23,9 @@ public:
 };
 
 // size of cache pages
-constexpr int PAGE_SIZE = 32;
+constexpr int PAGE_SIZE = 1;
 // shift required to get page from a given address = ctz(page_size)
-constexpr int PAGE_SHIFT = 5;
+constexpr int PAGE_SHIFT = 0;
 
 // Register definitions (TODO: make this work with the Windows ABI!!)
 const auto RETURN = eax;

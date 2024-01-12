@@ -371,6 +371,7 @@ void Core::run_frame() {
     int cycles_taken = 0;
 
     if (!HALT) {
+      // PRINT("0x{:04X}\n", pc);
       cycles_taken = GBCachedInterpreter::decode_execute(*this);
 
       // enable interrupt from EI after the next instruction
