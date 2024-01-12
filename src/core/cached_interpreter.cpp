@@ -1,6 +1,7 @@
 #include "cached_interpreter.h"
 #include "common_recompiler.h"
 #include "interpreter.h"
+#include <cstdint>
 
 // NOLINTBEGIN
 template <bool Write = false>
@@ -40,10 +41,12 @@ void GBCachedInterpreter::emit_prologue(Core& core) {
   code.push(rbp);
   code.mov(rbp, rsp);
   code.push(SAVED1);
+  code.push(SAVED2);
 }
 
 void GBCachedInterpreter::emit_epilogue(Core& core) {
   // epilogue
+  code.pop(SAVED2);
   code.pop(SAVED1);
   code.leave();
   code.ret();
@@ -86,22 +89,26 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
   emit_prologue(core);
   // SAVED1 will hold all dynamically emitted cycles
   code.mov(SAVED1, 0);
+  // SAVED2 will hold a pointer to the core
+  code.mov(SAVED2, (uintptr_t)&core);
 
   // At compile time, we know what static cycles to add onto the
   // PC. However, we still have to account for conditional cycles
 
   while (true) {
     PRINT("DYN PC: 0x{:04X}\n", dyn_pc);
-    const auto opcode = core.mem_read<uint8_t>(dyn_pc++);
     const auto initial_dyn_pc = dyn_pc;
+    const auto opcode = core.mem_read<uint8_t>(dyn_pc++);
+    code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
+
     if (opcode != 0xCB) {
       static_cycles_taken += regular_instr_timing[opcode] * 4;
     }
 
     if (opcode == 0x00) {
-      // do nothing...
+
     } else if (opcode == 0x10) {
-      dyn_pc++;
+      code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b0000'1000) {
       emit_fallback_no_params(GBInterpreter::ld_u16_sp, core);
@@ -278,7 +285,6 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
     } else if (opcode == 0b1100'0011) {
       emit_fallback_no_params(GBInterpreter::jp_u16, core);
       jump_emitted = true;
-      dyn_pc += 2;
 
     } else if (opcode == 0b1111'0011) {
       emit_fallback_no_params(GBInterpreter::di, core);
@@ -293,6 +299,7 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
 
     } else if (opcode == 0xCB) {
       const auto second = core.mem_read<uint8_t>(dyn_pc++);
+      code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
       static_cycles_taken += extended_instr_timing[second] * 4;
       if (second >> 3 == 0b00111) {
         emit_fallback_one_params(GBInterpreter::srl, core, second & 0x7);
@@ -345,34 +352,42 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
     } else if (opcode == 0b1111'1110) {
       emit_fallback_one_params(GBInterpreter::cp_value, core,
                                core.mem_read<uint8_t>(dyn_pc++));
+      code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b1110'0110) {
       emit_fallback_one_params(GBInterpreter::and_value, core,
                                core.mem_read<uint8_t>(dyn_pc++));
+      code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b1100'0110) {
       emit_fallback_one_params(GBInterpreter::add_value, core,
                                core.mem_read<uint8_t>(dyn_pc++));
+      code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b1101'0110) {
       emit_fallback_one_params(GBInterpreter::sub_value, core,
                                core.mem_read<uint8_t>(dyn_pc++));
+      code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b1110'1110) {
       emit_fallback_one_params(GBInterpreter::xor_value, core,
                                core.mem_read<uint8_t>(dyn_pc++));
+      code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b1100'1110) {
       emit_fallback_one_params(GBInterpreter::addc_value, core,
                                core.mem_read<uint8_t>(dyn_pc++));
+      code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b1111'0110) {
       emit_fallback_one_params(GBInterpreter::or_value, core,
                                core.mem_read<uint8_t>(dyn_pc++));
+      code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b1101'1110) {
       emit_fallback_one_params(GBInterpreter::subc_value, core,
                                core.mem_read<uint8_t>(dyn_pc++));
+      code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode >> 6 == 0b11 && (opcode & 0x7) == 0b111) {
       emit_fallback_one_params(GBInterpreter::rst, core, opcode >> 3 & 0x7);
@@ -385,13 +400,12 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
     code.add(SAVED1, eax);
 
     // reasons to exit a block:
-    // -> the page boundary has been reached
+    // -> the page boundary has been reached or crossed
     // -> any instruction that may modify the pc has been emitted
     bool old_page = initial_dyn_pc >> PAGE_SHIFT;
     bool new_page = dyn_pc >> PAGE_SHIFT;
     if (old_page != new_page || jump_emitted ||
         (dyn_pc & (PAGE_SIZE - 1)) == 0) {
-      core.pc = dyn_pc;
       break;
     }
   }

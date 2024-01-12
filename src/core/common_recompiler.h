@@ -33,3 +33,4 @@ const auto PARAM1 = rdi;
 const auto PARAM2 = rsi;
 const auto PARAM3 = rdx;
 const auto SAVED1 = r12;
+const auto SAVED2 = r13;
