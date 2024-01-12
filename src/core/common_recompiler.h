@@ -31,4 +31,5 @@ constexpr int PAGE_SHIFT = 5;
 const auto RETURN = eax;
 const auto PARAM1 = rdi;
 const auto PARAM2 = rsi;
+const auto PARAM3 = rdx;
 const auto SAVED1 = r12;

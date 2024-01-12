@@ -24,6 +24,8 @@
 // -> Interrupts (do they need to be serviced as soon as requested?)
 
 using no_params_fp = int (*)(Core&);
+using one_params_fp = int (*)(Core&, uint8_t);
+using two_params_fp = int (*)(Core&, uint8_t, uint8_t);
 
 class GBCachedInterpreter {
   inline static block_fp* block_page_table[0xffff >> PAGE_SHIFT];
@@ -49,5 +51,9 @@ public:
   static void emit_epilogue(Core& core);
   static block_fp recompile_block(Core& core);
   static void emit_fallback_no_params(no_params_fp fallback, Core& core);
+  static void emit_fallback_one_params(one_params_fp fallback, Core& core,
+                                       int first);
+  static void emit_fallback_two_params(two_params_fp fallback, Core& core,
+                                       int first, int second);
   static int decode_execute(Core& core);
 };
