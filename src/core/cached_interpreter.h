@@ -32,6 +32,19 @@ class GBCachedInterpreter {
     return (uintptr_t)variable - (uintptr_t)&core;
   }
 
+  // Check if code cache is close to being exhausted
+  static void check_emitted_cache() {
+    if (code.getSize() + CACHE_LEEWAY >
+        CACHE_SIZE) { // We've nearly exhausted code cache, so throw it out
+      code.reset();
+      memset(block_page_table, 0, sizeof(block_page_table));
+      PANIC("Code Cache Exhausted!!\n");
+    }
+  }
+
 public:
+  static void emit_prologue(Core& core);
+  static void emit_epilogue(Core& core);
+  static block_fp recompile_block(Core& core);
   static int decode_execute(Core& core);
 };

@@ -5,15 +5,14 @@
 using namespace Xbyak::util;
 using block_fp = int (*)();
 // using interpreterfp = void (*)(Core&, uint16_t);
+static constexpr int CACHE_SIZE = 64 * 1024 * 1024;
+
+// If current_cache_size + cache_leeway > cache_size, reset cache
+static constexpr int CACHE_LEEWAY = 1024;
 
 // The entire code emitter. God bless xbyak
 
 class x64Emitter : public Xbyak::CodeGenerator {
-  static constexpr int CACHE_SIZE = 64 * 1024 * 1024;
-
-  // If current_cache_size + cache_leeway > cache_size, reset cache
-  static constexpr int CACHE_LEEWAY = 1024;
-
 public:
   // emitted code cache
   uint8_t cache[CACHE_SIZE] = {};
@@ -27,3 +26,9 @@ public:
 constexpr int PAGE_SIZE = 32;
 // shift required to get page from a given address = ctz(page_size)
 constexpr int PAGE_SHIFT = 5;
+
+// Register definitions (TODO: make this work with the Windows ABI!!)
+const auto RETURN = eax;
+const auto PARAM1 = rdi;
+const auto PARAM2 = rsi;
+const auto SAVED1 = r12;
