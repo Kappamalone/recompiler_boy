@@ -127,7 +127,7 @@ int GBInterpreter::jp_u16(Core& core) {
   return 0;
 }
 
-int GBInterpreter::ld_r16_u16(Core& core, int gp1) {
+int GBInterpreter::ld_r16_u16(Core& core, uint8_t gp1) {
   auto imm16 = core.mem_read<uint16_t>(core.pc);
   core.pc += 2;
 
@@ -136,28 +136,28 @@ int GBInterpreter::ld_r16_u16(Core& core, int gp1) {
   return 0;
 }
 
-int GBInterpreter::ld_r8_r8(Core& core, int r8_src, int r8_dest) {
+int GBInterpreter::ld_r8_r8(Core& core, uint8_t r8_src, uint8_t r8_dest) {
   auto& dest = get_r8(core, r8_dest);
   auto& src = get_r8<true>(core, r8_src, dest);
   src = dest;
   return 0;
 }
 
-int GBInterpreter::ld_r8_u8(Core& core, int r8_src) {
+int GBInterpreter::ld_r8_u8(Core& core, uint8_t r8_src) {
   auto imm8 = core.mem_read<uint8_t>(core.pc++);
   auto& src = get_r8<true>(core, r8_src, imm8);
   src = imm8;
   return 0;
 }
 
-int GBInterpreter::ld_a_r16_addr(Core& core, int gp2) {
+int GBInterpreter::ld_a_r16_addr(Core& core, uint8_t gp2) {
   auto& dest = get_group_2(core, gp2);
   auto& src = get_r8<true>(core, 7, dest);
   src = dest;
   return 0;
 }
 
-int GBInterpreter::ld_r16_a_addr(Core& core, int gp2) {
+int GBInterpreter::ld_r16_a_addr(Core& core, uint8_t gp2) {
   auto& dest = get_r8(core, 7);
   auto& src = get_group_2<true>(core, gp2, dest);
   src = dest;
@@ -165,7 +165,7 @@ int GBInterpreter::ld_r16_a_addr(Core& core, int gp2) {
 }
 
 // POTENTIAL
-int GBInterpreter::inc_r8(Core& core, int r8) {
+int GBInterpreter::inc_r8(Core& core, uint8_t r8) {
   auto& src = get_r8(core, r8);
   core.set_flag(Regs::H, (src & 0xf) == 0xf);
   src++;
@@ -176,7 +176,7 @@ int GBInterpreter::inc_r8(Core& core, int r8) {
 }
 
 // POTENTIAL
-int GBInterpreter::dec_r8(Core& core, int r8) {
+int GBInterpreter::dec_r8(Core& core, uint8_t r8) {
   auto& src = get_r8(core, r8);
   core.set_flag(Regs::H, (src & 0xf) == 0); // set on borrow...?
   src--;
@@ -186,7 +186,7 @@ int GBInterpreter::dec_r8(Core& core, int r8) {
   return 0;
 }
 
-int GBInterpreter::jr_conditional(Core& core, int condition) {
+int GBInterpreter::jr_conditional(Core& core, uint8_t condition) {
   auto rel_signed_offest = (int8_t)core.mem_read<uint8_t>(core.pc++);
   if (condition_table(core, condition)) {
     core.pc += rel_signed_offest;
@@ -245,7 +245,7 @@ int GBInterpreter::reti(Core& core) {
   return 0;
 }
 
-int GBInterpreter::rst(Core& core, int vec) {
+int GBInterpreter::rst(Core& core, uint8_t vec) {
   auto jump_addr = vec << 3;
 
   core.sp -= 2;
@@ -261,25 +261,25 @@ int GBInterpreter::jr_unconditional(Core& core) {
   return 0;
 }
 
-int GBInterpreter::push_r16(Core& core, int gp3) {
+int GBInterpreter::push_r16(Core& core, uint8_t gp3) {
   core.sp -= 2;
   core.mem_write<uint16_t>(core.sp, get_group_3(core, gp3));
 
   return 0;
 }
 
-int GBInterpreter::pop_r16(Core& core, int gp3) {
+int GBInterpreter::pop_r16(Core& core, uint8_t gp3) {
   get_group_3(core, gp3) = core.mem_read<uint16_t>(core.sp);
   core.sp += 2;
   return 0;
 }
 
-int GBInterpreter::inc_r16(Core& core, int gp1) {
+int GBInterpreter::inc_r16(Core& core, uint8_t gp1) {
   get_group_1(core, gp1)++;
   return 0;
 }
 
-int GBInterpreter::dec_r16(Core& core, int gp1) {
+int GBInterpreter::dec_r16(Core& core, uint8_t gp1) {
   get_group_1(core, gp1)--;
   return 0;
 }
@@ -328,7 +328,7 @@ int GBInterpreter::and_value(Core& core, uint8_t value) {
   return 0;
 }
 
-int GBInterpreter::call_conditional(Core& core, int condition) {
+int GBInterpreter::call_conditional(Core& core, uint8_t condition) {
   auto jump_addr = core.mem_read<uint16_t>(core.pc);
   core.pc += 2;
 
@@ -440,7 +440,7 @@ int GBInterpreter::rra(Core& core) {
   return 0;
 }
 
-int GBInterpreter::ret_conditional(Core& core, int condition) {
+int GBInterpreter::ret_conditional(Core& core, uint8_t condition) {
   if (condition_table(core, condition)) {
     core.pc = core.mem_read<uint16_t>(core.sp);
     core.sp += 2;
@@ -451,7 +451,7 @@ int GBInterpreter::ret_conditional(Core& core, int condition) {
   return 0;
 }
 
-int GBInterpreter::add_hl_r16(Core& core, int gp1) {
+int GBInterpreter::add_hl_r16(Core& core, uint8_t gp1) {
   auto& hl = core.regs[Regs::HL];
   auto& reg = get_group_1(core, gp1);
   core.set_flag(Regs::H,
@@ -551,7 +551,7 @@ int GBInterpreter::rrca(Core& core) {
   return 0;
 }
 
-int GBInterpreter::rlc(Core& core, int r8) {
+int GBInterpreter::rlc(Core& core, uint8_t r8) {
   auto& reg = get_r8(core, r8);
   auto msb = reg >> 7;
   core.set_flag(Regs::Flag::C, msb);
@@ -563,7 +563,7 @@ int GBInterpreter::rlc(Core& core, int r8) {
   return 0;
 }
 
-int GBInterpreter::rrc(Core& core, int r8) {
+int GBInterpreter::rrc(Core& core, uint8_t r8) {
   auto& reg = get_r8(core, r8);
   auto lsb = reg & 1;
   core.set_flag(Regs::Flag::C, lsb);
@@ -666,7 +666,7 @@ int GBInterpreter::set(Core& core, uint8_t r8, uint8_t bit) {
   return 0;
 }
 
-int GBInterpreter::jp_conditional(Core& core, int condition) {
+int GBInterpreter::jp_conditional(Core& core, uint8_t condition) {
   auto jump_addr = core.mem_read<uint16_t>(core.pc);
   core.pc += 2;
   if (condition_table(core, condition)) {
