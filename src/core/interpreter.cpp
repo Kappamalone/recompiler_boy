@@ -281,7 +281,6 @@ int GBInterpreter::inc_r16(Core& core, uint8_t gp1) {
 
 int GBInterpreter::dec_r16(Core& core, uint8_t gp1) {
   get_group_1(core, gp1)--;
-  PRINT("0x{:04X}\n", core.regs[Regs::BC]);
   return 0;
 }
 

@@ -18,7 +18,7 @@ class Frontend {
 private:
   static constexpr size_t WINDOW_WIDTH = 1000;
   static constexpr size_t WINDOW_HEIGHT = 1000;
-  static constexpr char WINDOW_NAME[] = "TEMPLATE";
+  static constexpr char WINDOW_NAME[] = "Recompiler Boy";
 
   sf::RenderWindow window;
   sf::Texture texture;
