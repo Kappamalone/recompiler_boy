@@ -29,6 +29,10 @@ dmg-acid2 |
 :-------------------------:
 <img src="./images/acid2.png" width="400">
 
+Debug Views |
+:-------------------------:|
+<img src="./images/debug.png" width="828">
+
 ## TODO
 - Add SPU
 - CGB support

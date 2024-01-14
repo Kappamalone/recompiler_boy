@@ -34,6 +34,7 @@ MBC::MBC(Core& core, const char* rom_path) : core(core) {
   PRINT("ROM SIZE: {}\n", rom_size);
   file.seekg(0);
   file.read((char*)(rom.data()), sizeof(uint8_t) * rom_size_map[rom_size]);
+  ram.resize(0x2000);
 
   file.seekg(0x149);
   file.read((char*)&ram_size, 1);
