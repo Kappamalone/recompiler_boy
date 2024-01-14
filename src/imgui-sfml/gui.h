@@ -85,25 +85,6 @@ private:
     }
   }
 
-  // TODO: actually use imgui
-  void draw_imgui_windows() {
-    static sf::Clock deltaClock;
-    ImGui::SFML::Update(window, deltaClock.restart());
-
-    /*
-    static size_t counter = 0;
-    static double frame_time = 0;
-    frame_time += std::chrono::duration<double>{core.get_frame_time()}.count();
-    counter++;
-    if (counter == 10) {
-      PRINT("{:.2f} ms ", 1000 * (frame_time / 10));
-      PRINT("{:.2f} fps\n", 1. / (frame_time / 10));
-      counter = 0;
-      frame_time = 0;
-    }
-    */
-  }
-
 public:
   explicit Frontend(Config config)
       : core(
@@ -128,9 +109,7 @@ public:
     while (window.isOpen()) {
       ping_core_thread();
 
-      wait_for_core_thread();
-
-      // HACK: temporarily eliminates screen tearing
+      // TODO: double buffering
       handle_input();
       draw_imgui_windows();
       texture.update(core.get_fb_ref().pixels.data());
@@ -138,10 +117,14 @@ public:
       window.draw(sprite);
       ImGui::SFML::Render(window);
       window.display();
+
+      wait_for_core_thread();
     }
 
     exit(0);
   }
+
+  void draw_imgui_windows();
 
   // we ping the core thread, which then runs for one frame. the core
   // frame then pings back once frame execution is finished

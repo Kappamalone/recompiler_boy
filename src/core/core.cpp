@@ -273,7 +273,7 @@ uint8_t& Core::handle_mmio(uint16_t addr, uint8_t value) {
     case 0xFFFF:
       return IE;
     default:
-      PRINT("Unknown memory reference at 0x{:08X}\n", addr);
+      DPRINT("Unknown memory reference at 0x{:08X}\n", addr);
       return STUB;
   }
 }

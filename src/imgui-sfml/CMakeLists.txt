@@ -1,6 +1,7 @@
 SET(SOURCES
     main.cpp
     gui.h
+    imgui_windows.cpp
 )
 
 # Windows specific config

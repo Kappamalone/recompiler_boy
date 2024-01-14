@@ -14,15 +14,10 @@ playable (see below).
 Title | In-game
 :-------------------------:|:-------------------------:
 <img src="./images/LoZ.png" width="400"> | <img src="./images/LoZ_ingame.png" width="400">
-<img src="./images/SML.png" width="400"> | <img src="./images/SML_ingame.png" width="400">
-<img src="./images/pokemon.png" width="400"> | <img src="./images/pokemon_ingame.png" width="400">
-
-Debugger |
-:-------------------------:|
-<img src="./images/debug.png" width="828">
+<img src="./images/Tetris.png" width="400"> | <img src="./images/Tetris_ingame.png" width="400">
 
 # Tests
-These tests have been passed using the interpreter cpu backend. 
+These tests have been passed using the interpreter cpu backend.
 
 ### [Blaarg's Test Roms](https://github.com/retrio/gb-test-roms)
 cpu_instrs | instr_timing
@@ -38,6 +33,10 @@ dmg-acid2 |
 - Add SPU
 - CGB support
 
+# Compilation and Usage
+
+This project has only been tested on Linux. To compile, simply run `./run.sh`.
+
 # Project Write Up
 
 This is a mini blog about this project, how emulation works, and how the different challenges that
@@ -46,12 +45,6 @@ need to be faced in order to write a cached interpreter/dynamic recompiler.
 
 # Resources used
 
-TODO: expand
-
-#### - [Pandocs](https://gbdev.io/pandocs/)
-#### - [Game Boy: Complete Technical Reference](https://gekkio.fi/files/gb-docs/gbctr.pdf)
-#### - [SM83 Opcode Decodings](https://cdn.discordapp.com/attachments/465586075830845475/742438340078469150/SM83_decoding.pdf)
-
-
-
-
+#### [Pandocs](https://gbdev.io/pandocs/)
+#### [Game Boy: Complete Technical Reference](https://gekkio.fi/files/gb-docs/gbctr.pdf)
+#### [SM83 Opcode Decodings](https://cdn.discordapp.com/attachments/465586075830845475/742438340078469150/SM83_decoding.pdf)
