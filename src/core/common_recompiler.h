@@ -3,7 +3,7 @@
 #include <xbyak/xbyak.h>
 
 using namespace Xbyak::util;
-using block_fp = int (*)();
+using block_fp = int64_t (*)();
 // using interpreterfp = void (*)(Core&, uint16_t);
 static constexpr int CACHE_SIZE = 64 * 1024 * 1024;
 

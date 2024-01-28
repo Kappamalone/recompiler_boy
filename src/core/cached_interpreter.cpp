@@ -52,8 +52,7 @@ void GBCachedInterpreter::emit_epilogue(Core& core) {
   code.pop(SAVED2);
   code.pop(SAVED1);
 
-  code.mov(rsp, rbp);
-  code.pop(rbp);
+  code.leave();
   code.ret();
 }
 
@@ -68,7 +67,7 @@ void GBCachedInterpreter::emit_fallback_one_params(one_params_fp fallback,
                                                    Core& core, int first) {
   code.mov(rax, (uintptr_t)fallback);
   code.mov(PARAM1, (uintptr_t)&core);
-  code.mov(PARAM2, first);
+  code.mov(PARAM2, (int64_t)first);
   code.call(rax);
 }
 
@@ -77,15 +76,14 @@ void GBCachedInterpreter::emit_fallback_two_params(two_params_fp fallback,
                                                    int second) {
   code.mov(rax, (uintptr_t)fallback);
   code.mov(PARAM1, (uintptr_t)&core);
-  code.mov(PARAM2, first);
-  code.mov(PARAM3, second);
+  code.mov(PARAM2, (int64_t)first);
+  code.mov(PARAM3, (int64_t)second);
   code.call(rax);
 }
 
 block_fp GBCachedInterpreter::recompile_block(Core& core) {
   check_emitted_cache();
   // TODO: block invalidation
-  printf("Recompiling block: %X\n", core.pc);
 
   auto emitted_function = (block_fp)code.getCurr();
   auto dyn_pc = core.pc;
@@ -97,15 +95,15 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
   code.mov(SAVED1, 0);
   // SAVED2 will hold a pointer to the core
   code.mov(SAVED2, (uintptr_t)&core);
+  code.mov(rax, 0);
 
   // At compile time, we know what static cycles to add onto the
   // PC. However, we still have to account for conditional cycles
 
   while (true) {
-    printf("DYN PC: %X\n", dyn_pc);
     const auto initial_dyn_pc = dyn_pc;
     const auto opcode = core.mem_read<uint8_t>(dyn_pc++);
-    code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
+    code.add(dword[SAVED2 + get_offset(core, &core.pc)], 1);
 
     if (opcode != 0xCB) {
       static_cycles_taken += regular_instr_timing[opcode] * 4;
@@ -114,7 +112,7 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
     if (opcode == 0x00) {
 
     } else if (opcode == 0x10) {
-      code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
+      code.add(dword[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b0000'1000) {
       emit_fallback_no_params(GBInterpreter::ld_u16_sp, core);
@@ -412,7 +410,7 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
       PANIC("Unhandled opcode: 0x{:02X} | 0b{:08b}\n", opcode, opcode);
     }
 
-    code.add(SAVED1, eax);
+    code.add(SAVED1, rax);
 
     // reasons to exit a block:
     // -> the page boundary has been reached or crossed
@@ -425,8 +423,8 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
     }
   }
 
-  code.mov(eax, SAVED1);
-  code.add(eax, static_cycles_taken);
+  code.mov(rax, SAVED1);
+  code.add(rax, static_cycles_taken);
   emit_epilogue(core);
 
   return emitted_function;
