@@ -39,6 +39,7 @@ public:
   static int or_a_r8(Core& core, uint8_t r8);
   static int ldh_a_u8(Core& core);
   static int cp_value(Core& core, uint8_t value);
+  static int cp_a_value(Core& core, uint8_t r8);
   static int ld_a_u16(Core& core);
   static int and_value(Core& core, uint8_t value);
   static int call_conditional(Core& core, uint8_t condition);

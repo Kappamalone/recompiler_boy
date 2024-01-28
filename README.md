@@ -41,11 +41,6 @@ Debug Views |
 
 This project has only been tested on Linux. To compile, simply run `./run.sh`.
 
-# Project Write Up
-
-This is a mini blog about this project, how emulation works, and how the different challenges that
-need to be faced in order to write a cached interpreter/dynamic recompiler. 
-
 
 # Resources used
 

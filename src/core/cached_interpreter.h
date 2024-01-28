@@ -28,6 +28,7 @@ using one_params_fp = int (*)(Core&, uint8_t);
 using two_params_fp = int (*)(Core&, uint8_t, uint8_t);
 
 class GBCachedInterpreter {
+public:
   inline static block_fp* block_page_table[0xffff >> PAGE_SHIFT];
   inline static x64Emitter code;
 

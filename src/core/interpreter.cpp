@@ -320,6 +320,17 @@ int GBInterpreter::cp_value(Core& core, uint8_t value) {
   return 0;
 }
 
+int GBInterpreter::cp_a_value(Core& core, uint8_t r8) {
+  auto temp = get_r8(core, 7);
+  auto value = get_r8(core, r8);
+  core.set_flag(Regs::Flag::Z, temp - value == 0);
+  core.set_flag(Regs::Flag::N, true);
+  core.set_flag(Regs::Flag::H, (uint8_t)((temp & 0xf) - (value & 0xf)) > 0xf);
+  core.set_flag(Regs::Flag::C,
+                (uint16_t)((uint16_t)temp - (uint16_t)value) > 0xff);
+  return 0;
+}
+
 int GBInterpreter::ld_a_u16(Core& core) {
   auto value = core.mem_read<uint8_t>(core.mem_read<uint16_t>(core.pc));
   core.pc += 2;
