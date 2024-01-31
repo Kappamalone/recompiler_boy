@@ -172,8 +172,9 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
       emit_fallback_one_params(GBInterpreter::dec_r8, core, opcode >> 3 & 0x7);
 
     } else if (opcode == 0b0111'0110) {
-      PANIC("how to handle halt?");
+      // PANIC("how to handle halt?");
       emit_fallback_no_params(GBInterpreter::halt, core);
+      jump_emitted = true;
 
     } else if (opcode >> 6 == 0b00 && (opcode & 0x7) == 0b110) {
       emit_fallback_one_params(GBInterpreter::ld_r8_u8, core,
@@ -275,7 +276,7 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
       dyn_pc++;
 
     } else if (opcode == 0b1111'1000) {
-      PANIC("24!\n");
+      // PANIC("24!\n");
       emit_fallback_no_params(GBInterpreter::ld_hl_sp_i8, core);
       dyn_pc++;
 
@@ -333,7 +334,8 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
       emit_fallback_no_params(GBInterpreter::di, core);
 
     } else if (opcode == 0b1111'1011) {
-      PANIC("interrupts? ei\n");
+      // INTERRUPTS
+      // PANIC("interrupts? ei\n");
       emit_fallback_no_params(GBInterpreter::ei, core);
 
     } else if (opcode >> 5 == 0b110 && (opcode & 0x7) == 0b0100) {

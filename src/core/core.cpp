@@ -398,7 +398,7 @@ void Core::run_frame() {
       }
       cycles_taken = 4;
     }
-    // cycles_taken += handle_interrupts();
+    cycles_taken += handle_interrupts();
 
     ppu.tick(cycles_taken);
     tick_timers(cycles_taken);
