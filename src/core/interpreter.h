@@ -44,6 +44,7 @@ public:
   static int and_value(Core& core, uint8_t value);
   static int call_conditional(Core& core, uint8_t condition);
   static int xor_value(Core& core, uint8_t value);
+  static int xor_a_r8(Core& core, uint8_t r8);
   static int add_value(Core& core, uint8_t value);
   static int sub_value(Core& core, uint8_t value);
   static int addc_value(Core& core, uint8_t value);

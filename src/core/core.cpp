@@ -30,7 +30,7 @@ static void append_to_logging(const std::string& content) {
 Core::Core(Config config, std::vector<bool>& input)
     : input(input), mbc(*this, config.rom_path) {
   // create_logging_file("../../logging.txt");
-  //
+
   switch (config.cpu_type) {
     case CPUTypes::INTERPRETER:
       decode_execute_func = GBInterpreter::decode_execute;
@@ -398,7 +398,7 @@ void Core::run_frame() {
       }
       cycles_taken = 4;
     }
-    cycles_taken += handle_interrupts();
+    // cycles_taken += handle_interrupts();
 
     ppu.tick(cycles_taken);
     tick_timers(cycles_taken);

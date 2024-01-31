@@ -192,7 +192,6 @@ int GBInterpreter::jr_conditional(Core& core, uint8_t condition) {
     core.pc += rel_signed_offest;
     return 4;
   }
-
   return 0;
 }
 
@@ -365,6 +364,18 @@ int GBInterpreter::call_conditional(Core& core, uint8_t condition) {
 
 int GBInterpreter::xor_value(Core& core, uint8_t value) {
   auto& acc = get_r8(core, 7);
+  acc ^= value;
+  core.set_flag(Regs::Flag::Z, acc == 0);
+  core.set_flag(Regs::Flag::N, false);
+  core.set_flag(Regs::Flag::H, false);
+  core.set_flag(Regs::Flag::C, false);
+
+  return 0;
+}
+
+int GBInterpreter::xor_a_r8(Core& core, uint8_t r8) {
+  auto& acc = get_r8(core, 7);
+  auto& value = get_r8(core, r8);
   acc ^= value;
   core.set_flag(Regs::Flag::Z, acc == 0);
   core.set_flag(Regs::Flag::N, false);

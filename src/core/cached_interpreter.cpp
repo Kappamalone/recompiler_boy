@@ -103,6 +103,7 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
   // PC. However, we still have to account for conditional cycles
 
   while (true) {
+    PRINT("DYN PC: 0x{:04X}\n", dyn_pc);
     const auto initial_dyn_pc = dyn_pc;
     const auto opcode = core.mem_read<uint8_t>(dyn_pc++);
     code.add(dword[SAVED2 + get_offset(core, &core.pc)], 1);
@@ -117,14 +118,17 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
       code.add(dword[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b0000'1000) {
+      // PANIC("42!\n");
       emit_fallback_no_params(GBInterpreter::ld_u16_sp, core);
       dyn_pc += 2;
 
     } else if (opcode == 0b0001'1000) {
+      // PANIC("41!\n");
       emit_fallback_no_params(GBInterpreter::jr_unconditional, core);
       jump_emitted = true;
 
     } else if (opcode == 0b1110'1010) {
+      // PANIC("40!\n");
       emit_fallback_no_params(GBInterpreter::ld_u16_a, core);
       dyn_pc += 2;
 
@@ -139,6 +143,7 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
       dyn_pc += 2;
 
     } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b1001) {
+      // PANIC("39!\n");
       emit_fallback_one_params(GBInterpreter::add_hl_r16, core,
                                opcode >> 4 & 0b11);
 
@@ -151,10 +156,12 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
                                opcode >> 4 & 0b11);
 
     } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b0011) {
+      // PANIC("38!\n");
       emit_fallback_one_params(GBInterpreter::inc_r16, core,
                                opcode >> 4 & 0b11);
 
     } else if ((opcode & 0xC0) == 0 && (opcode & 0x0f) == 0b1011) {
+      PANIC("37!\n");
       emit_fallback_one_params(GBInterpreter::dec_r16, core,
                                opcode >> 4 & 0b11);
 
@@ -174,27 +181,35 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
       dyn_pc++;
 
     } else if (opcode == 0b0010'0111) {
+      // PANIC("36!\n");
       emit_fallback_no_params(GBInterpreter::daa, core);
 
     } else if (opcode == 0b0001'1111) {
+      // PANIC("35!\n");
       emit_fallback_no_params(GBInterpreter::rra, core);
 
     } else if (opcode == 0b0010'1111) {
+      PANIC("34!\n");
       emit_fallback_no_params(GBInterpreter::cpl, core);
 
     } else if (opcode == 0b0011'0111) {
+      PANIC("33!\n");
       emit_fallback_no_params(GBInterpreter::scf, core);
 
     } else if (opcode == 0b0011'1111) {
+      PANIC("32!\n");
       emit_fallback_no_params(GBInterpreter::ccf, core);
 
     } else if (opcode == 0b0000'0111) {
+      PANIC("31!\n");
       emit_fallback_no_params(GBInterpreter::rlca, core);
 
     } else if (opcode == 0b0001'0111) {
+      PANIC("30!\n");
       emit_fallback_no_params(GBInterpreter::rla_acc, core);
 
     } else if (opcode == 0b0000'1111) {
+      PANIC("29!\n");
       emit_fallback_no_params(GBInterpreter::rrca, core);
 
     } else if (opcode >> 6 == 0b01) {
@@ -206,12 +221,11 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
       emit_fallback_one_params(GBInterpreter::or_a_r8, core, opcode & 0x7);
 
     } else if (opcode >> 3 == 0b10101) {
-      PANIC("hit 1\n");
-      emit_fallback_one_params(GBInterpreter::xor_value, core,
-                               get_r8(core, opcode & 0x7));
+      // PANIC("hit 1\n");
+      emit_fallback_one_params(GBInterpreter::xor_a_r8, core, opcode & 0x7);
 
     } else if (opcode >> 3 == 0b10111) {
-      PANIC("hit 2\n");
+      // PANIC("hit 2\n");
       emit_fallback_one_params(GBInterpreter::cp_a_value, core, opcode & 0x7);
 
     } else if (opcode >> 3 == 0b10000) {
@@ -240,59 +254,73 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
                                get_r8(core, opcode & 0x7));
 
     } else if (opcode >> 5 == 0b110 && (opcode & 0x7) == 0) {
+      // PANIC("28!\n");
       emit_fallback_one_params(GBInterpreter::ret_conditional, core,
                                opcode >> 3 & 0b11);
       jump_emitted = true;
 
     } else if (opcode == 0b1110'0000) {
+      // PANIC("27!\n");
       emit_fallback_no_params(GBInterpreter::ldh_u8_a, core);
       dyn_pc++;
 
     } else if (opcode == 0b1110'1000) {
+      PANIC("26!\n");
       emit_fallback_no_params(GBInterpreter::add_sp_i8, core);
       dyn_pc++;
 
     } else if (opcode == 0b1111'0000) {
+      // PANIC("25!\n");
       emit_fallback_no_params(GBInterpreter::ldh_a_u8, core);
       dyn_pc++;
 
     } else if (opcode == 0b1111'1000) {
+      PANIC("24!\n");
       emit_fallback_no_params(GBInterpreter::ld_hl_sp_i8, core);
       dyn_pc++;
 
     } else if (opcode >> 6 == 0b11 && (opcode & 0xf) == 0b0001) {
+      // PANIC("23!\n");
       emit_fallback_one_params(GBInterpreter::pop_r16, core,
                                opcode >> 4 & 0b11);
 
     } else if (opcode == 0b1111'1001) {
+      PANIC("22!\n");
       emit_fallback_no_params(GBInterpreter::ld_sp_hl, core);
 
     } else if (opcode == 0b1110'1001) {
+      // PANIC("21!\n");
       emit_fallback_no_params(GBInterpreter::jp_hl, core);
       jump_emitted = true;
 
     } else if (opcode == 0b1100'1001) {
+      // PANIC("20!\n");
       emit_fallback_no_params(GBInterpreter::ret, core);
       jump_emitted = true;
 
     } else if (opcode == 0b1101'1001) {
+      PANIC("19!\n");
       // PANIC("interrupts? reti");
       emit_fallback_no_params(GBInterpreter::reti, core);
       jump_emitted = true;
 
     } else if (opcode >> 5 == 0b110 && (opcode & 0x7) == 0b010) {
+      // PANIC("18!\n");
       emit_fallback_one_params(GBInterpreter::jp_conditional, core,
                                opcode >> 3 & 0b11);
       jump_emitted = true;
 
     } else if (opcode == 0b1110'0010) {
+      PANIC("17!\n");
       emit_fallback_no_params(GBInterpreter::ld_c_a, core);
 
     } else if (opcode == 0b1111'1010) {
+      // PANIC("16!\n");
       emit_fallback_no_params(GBInterpreter::ld_a_u16, core);
       dyn_pc += 2;
 
     } else if (opcode == 0b1111'0010) {
+      PANIC("15!\n");
       emit_fallback_no_params(GBInterpreter::ld_a_c, core);
 
     } else if (opcode == 0b1100'0011) {
@@ -300,6 +328,7 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
       jump_emitted = true;
 
     } else if (opcode == 0b1111'0011) {
+      // PANIC("14!\n");
       // PANIC("interrupts? di\n");
       emit_fallback_no_params(GBInterpreter::di, core);
 
@@ -308,11 +337,13 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
       emit_fallback_no_params(GBInterpreter::ei, core);
 
     } else if (opcode >> 5 == 0b110 && (opcode & 0x7) == 0b0100) {
+      // PANIC("13!\n");
       emit_fallback_one_params(GBInterpreter::call_conditional, core,
                                opcode >> 3 & 0b11);
       jump_emitted = true;
 
     } else if (opcode == 0xCB) {
+      // PANIC("12!\n");
       const auto second = core.mem_read<uint8_t>(dyn_pc++);
       code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
       static_cycles_taken += extended_instr_timing[second] * 4;
@@ -357,54 +388,66 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
       }
 
     } else if (opcode >> 6 == 0b11 && (opcode & 0xf) == 0b0101) {
+      // PANIC("11!\n");
       emit_fallback_one_params(GBInterpreter::push_r16, core,
                                opcode >> 4 & 0b11);
 
     } else if (opcode == 0b1100'1101) {
+      // PANIC("10!\n");
       emit_fallback_no_params(GBInterpreter::call_u16, core);
       dyn_pc += 2;
+      jump_emitted = true;
 
     } else if (opcode == 0b1111'1110) {
+      // PANIC("9!\n");
       emit_fallback_one_params(GBInterpreter::cp_value, core,
                                core.mem_read<uint8_t>(dyn_pc++));
       code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b1110'0110) {
+      // PANIC("8!\n");
       emit_fallback_one_params(GBInterpreter::and_value, core,
                                core.mem_read<uint8_t>(dyn_pc++));
       code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b1100'0110) {
+      // PANIC("7!\n");
       emit_fallback_one_params(GBInterpreter::add_value, core,
                                core.mem_read<uint8_t>(dyn_pc++));
       code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b1101'0110) {
+      // PANIC("6!\n");
       emit_fallback_one_params(GBInterpreter::sub_value, core,
                                core.mem_read<uint8_t>(dyn_pc++));
       code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b1110'1110) {
+      // PANIC("5!\n");
       emit_fallback_one_params(GBInterpreter::xor_value, core,
                                core.mem_read<uint8_t>(dyn_pc++));
       code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b1100'1110) {
+      // PANIC("4!\n");
       emit_fallback_one_params(GBInterpreter::addc_value, core,
                                core.mem_read<uint8_t>(dyn_pc++));
       code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b1111'0110) {
+      PANIC("3!\n");
       emit_fallback_one_params(GBInterpreter::or_value, core,
                                core.mem_read<uint8_t>(dyn_pc++));
       code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode == 0b1101'1110) {
+      PANIC("2!\n");
       emit_fallback_one_params(GBInterpreter::subc_value, core,
                                core.mem_read<uint8_t>(dyn_pc++));
       code.add(word[SAVED2 + get_offset(core, &core.pc)], 1);
 
     } else if (opcode >> 6 == 0b11 && (opcode & 0x7) == 0b111) {
+      PANIC("1!\n");
       emit_fallback_one_params(GBInterpreter::rst, core, opcode >> 3 & 0x7);
       jump_emitted = true;
 
