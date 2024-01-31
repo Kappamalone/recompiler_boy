@@ -34,6 +34,7 @@ int main(int argc, char** argv) {
   }
 
   Config config{};
+  config.cpu_type = CPUTypes::INTERPRETER;
   config.rom_path = argv[1];
   if (argc == 3) {
     config.bootrom_path = argv[2];

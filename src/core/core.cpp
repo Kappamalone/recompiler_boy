@@ -30,6 +30,16 @@ static void append_to_logging(const std::string& content) {
 Core::Core(Config config, std::vector<bool>& input)
     : input(input), mbc(*this, config.rom_path) {
   // create_logging_file("../../logging.txt");
+  //
+  switch (config.cpu_type) {
+    case CPUTypes::INTERPRETER:
+      decode_execute_func = GBInterpreter::decode_execute;
+      break;
+    case CPUTypes::CACHED_INTERPRETER:
+      decode_execute_func = GBCachedInterpreter::decode_execute;
+      break;
+  }
+
   fb.pixels.resize(fb.width * fb.height * 4);
   input.resize(8);
   regs.fill(0);
@@ -371,9 +381,9 @@ void Core::run_frame() {
     int cycles_taken = 0;
 
     if (!HALT) {
-      PRINT("PC: 0x{:04X}\n", pc);
+      // PRINT("PC: 0x{:04X}\n", pc);
+      cycles_taken = decode_execute_func(*this);
       // cycles_taken = GBInterpreter::decode_execute(*this);
-      cycles_taken = GBCachedInterpreter::decode_execute(*this);
 
       // enable interrupt from EI after the next instruction
       if (req_IME) {
@@ -388,7 +398,7 @@ void Core::run_frame() {
       }
       cycles_taken = 4;
     }
-    // cycles_taken += handle_interrupts();
+    cycles_taken += handle_interrupts();
 
     ppu.tick(cycles_taken);
     tick_timers(cycles_taken);

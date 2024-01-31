@@ -105,6 +105,9 @@ public:
   uint8_t JOYP_WRITE = 0;
   uint8_t JOYP_READ = 0;
 
+  using DecodeExecuteFunc = int (*)(Core& core);
+  DecodeExecuteFunc decode_execute_func;
+
 public:
   Core(Config config, std::vector<bool>& input);
   void run_frame();

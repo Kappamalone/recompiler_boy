@@ -37,7 +37,6 @@ static constexpr uint8_t& get_r8(Core& core, int r8, uint8_t value = 0) {
 // NOLINTEND
 
 void GBCachedInterpreter::emit_prologue(Core& core) {
-  // prologue
   code.push(rbp);
   code.mov(rbp, rsp);
 
@@ -47,7 +46,6 @@ void GBCachedInterpreter::emit_prologue(Core& core) {
 }
 
 void GBCachedInterpreter::emit_epilogue(Core& core) {
-  // epilogue
   code.add(rsp, 8);
   code.pop(SAVED2);
   code.pop(SAVED1);
@@ -95,6 +93,10 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
   code.mov(SAVED1, 0);
   // SAVED2 will hold a pointer to the core
   code.mov(SAVED2, (uintptr_t)&core);
+
+  // For the functions we call, rax holds the additional cycles to add onto
+  // the static cycles we calculate. However, for certain functions (eg NOP)
+  // rax is not set to anything, which can cause problems!!
   code.mov(rax, 0);
 
   // At compile time, we know what static cycles to add onto the
