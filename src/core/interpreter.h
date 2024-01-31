@@ -42,13 +42,18 @@ public:
   static int cp_a_value(Core& core, uint8_t r8);
   static int ld_a_u16(Core& core);
   static int and_value(Core& core, uint8_t value);
+  static int and_a_value(Core& core, uint8_t r8);
   static int call_conditional(Core& core, uint8_t condition);
   static int xor_value(Core& core, uint8_t value);
   static int xor_a_r8(Core& core, uint8_t r8);
   static int add_value(Core& core, uint8_t value);
+  static int add_a_value(Core& core, uint8_t r8);
   static int sub_value(Core& core, uint8_t value);
+  static int sub_a_value(Core& core, uint8_t r8);
   static int addc_value(Core& core, uint8_t value);
+  static int addc_a_value(Core& core, uint8_t r8);
   static int subc_value(Core& core, uint8_t value);
+  static int subc_a_value(Core& core, uint8_t r8);
   static int srl(Core& core, uint8_t r8);
   static int rr(Core& core, uint8_t r8);
   static int rra(Core& core);

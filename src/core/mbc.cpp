@@ -9,7 +9,7 @@ MBC::MBC(Core& core, const char* rom_path) : core(core) {
   std::ifstream file(rom_path, std::ios::binary);
 
   if (!file.is_open()) {
-    PANIC("Error opening file\n");
+    PANIC("Error opening file: {}\n", rom_path);
   }
 
   file.seekg(0x147);

@@ -348,6 +348,18 @@ int GBInterpreter::and_value(Core& core, uint8_t value) {
   return 0;
 }
 
+int GBInterpreter::and_a_value(Core& core, uint8_t r8) {
+  auto& acc = get_r8(core, 7);
+  auto& value = get_r8(core, r8);
+  acc &= value;
+  core.set_flag(Regs::Flag::Z, acc == 0);
+  core.set_flag(Regs::Flag::N, false);
+  core.set_flag(Regs::Flag::H, true);
+  core.set_flag(Regs::Flag::C, false);
+
+  return 0;
+}
+
 int GBInterpreter::call_conditional(Core& core, uint8_t condition) {
   auto jump_addr = core.mem_read<uint16_t>(core.pc);
   core.pc += 2;
@@ -397,8 +409,36 @@ int GBInterpreter::add_value(Core& core, uint8_t value) {
   return 0;
 }
 
+int GBInterpreter::add_a_value(Core& core, uint8_t r8) {
+  auto& acc = get_r8(core, 7);
+  auto& value = get_r8(core, r8);
+  core.set_flag(Regs::H,
+                (uint8_t)(((acc & 0x0f) + (value & 0x0f)) & 0x10) == 0x10);
+  core.set_flag(Regs::C, (uint16_t)((uint16_t)acc + (uint16_t)value) > 0xff);
+  acc += value;
+  core.set_flag(Regs::Flag::Z, acc == 0);
+  core.set_flag(Regs::Flag::N, false);
+
+  return 0;
+}
+
 int GBInterpreter::addc_value(Core& core, uint8_t value) {
   auto& acc = get_r8(core, 7);
+  auto carry = core.get_flag(Regs::C);
+  core.set_flag(Regs::H, (uint8_t)(((acc & 0x0f) + (value & 0x0f) + carry) &
+                                   0x10) == 0x10);
+  core.set_flag(Regs::C, (uint16_t)((uint16_t)acc + (uint16_t)value +
+                                    (uint16_t)carry) > 0xff);
+  acc += value + carry;
+  core.set_flag(Regs::Flag::Z, acc == 0);
+  core.set_flag(Regs::Flag::N, false);
+
+  return 0;
+}
+
+int GBInterpreter::addc_a_value(Core& core, uint8_t r8) {
+  auto& acc = get_r8(core, 7);
+  auto& value = get_r8(core, r8);
   auto carry = core.get_flag(Regs::C);
   core.set_flag(Regs::H, (uint8_t)(((acc & 0x0f) + (value & 0x0f) + carry) &
                                    0x10) == 0x10);
@@ -422,8 +462,35 @@ int GBInterpreter::sub_value(Core& core, uint8_t value) {
   return 0;
 }
 
+int GBInterpreter::sub_a_value(Core& core, uint8_t r8) {
+  auto& acc = get_r8(core, 7);
+  auto& value = get_r8(core, r8);
+  core.set_flag(Regs::H, (uint8_t)((acc & 0x0f) - (value & 0x0f)) > 0xf);
+  core.set_flag(Regs::C, (uint16_t)((uint16_t)acc - (uint16_t)value) > 0xff);
+  acc -= value;
+  core.set_flag(Regs::Flag::Z, acc == 0);
+  core.set_flag(Regs::Flag::N, true);
+
+  return 0;
+}
+
 int GBInterpreter::subc_value(Core& core, uint8_t value) {
   auto& acc = get_r8(core, 7);
+  auto carry = core.get_flag(Regs::C);
+  core.set_flag(Regs::H,
+                (uint8_t)((acc & 0x0f) - (value & 0x0f) - carry) > 0xf);
+  core.set_flag(Regs::C, (uint16_t)((uint16_t)acc - (uint16_t)value -
+                                    (uint16_t)carry) > 0xff);
+  acc = acc - value - carry;
+  core.set_flag(Regs::Flag::Z, acc == 0);
+  core.set_flag(Regs::Flag::N, true);
+
+  return 0;
+}
+
+int GBInterpreter::subc_a_value(Core& core, uint8_t r8) {
+  auto& acc = get_r8(core, 7);
+  auto& value = get_r8(core, r8);
   auto carry = core.get_flag(Regs::C);
   core.set_flag(Regs::H,
                 (uint8_t)((acc & 0x0f) - (value & 0x0f) - carry) > 0xf);
