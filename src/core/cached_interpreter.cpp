@@ -3,39 +3,6 @@
 #include "interpreter.h"
 #include <cstdint>
 
-// NOLINTBEGIN
-template <bool Write = false>
-static constexpr uint8_t& get_r8(Core& core, int r8, uint8_t value = 0) {
-  switch (r8) {
-    case 0:
-      return reinterpret_cast<uint8_t*>(&core.regs[Regs::BC])[1];
-      break;
-    case 1:
-      return reinterpret_cast<uint8_t*>(&core.regs[Regs::BC])[0];
-      break;
-    case 2:
-      return reinterpret_cast<uint8_t*>(&core.regs[Regs::DE])[1];
-      break;
-    case 3:
-      return reinterpret_cast<uint8_t*>(&core.regs[Regs::DE])[0];
-      break;
-    case 4:
-      return reinterpret_cast<uint8_t*>(&core.regs[Regs::HL])[1];
-      break;
-    case 5:
-      return reinterpret_cast<uint8_t*>(&core.regs[Regs::HL])[0];
-      break;
-    case 6:
-      return core.mem_byte_reference<Write>(core.regs[Regs::HL], value);
-    case 7:
-      return reinterpret_cast<uint8_t*>(&core.regs[Regs::AF])[1];
-      break;
-    default:
-      PANIC("r8 error!\n");
-  }
-}
-// NOLINTEND
-
 void GBCachedInterpreter::emit_prologue(Core& core) {
   code.push(rbp);
   code.mov(rbp, rsp);
@@ -116,6 +83,7 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
 
     } else if (opcode == 0x10) {
       code.add(dword[SAVED2 + get_offset(core, &core.pc)], 1);
+      dyn_pc += 1;
 
     } else if (opcode == 0b0000'1000) {
       // PANIC("42!\n");
@@ -472,6 +440,14 @@ block_fp GBCachedInterpreter::recompile_block(Core& core) {
   return emitted_function;
 }
 
+void GBCachedInterpreter::invalidate_page(uint16_t addr) {
+  auto& page = block_page_table[addr >> PAGE_SHIFT];
+  if (page) {
+    delete[] page;
+    page = nullptr;
+  }
+}
+
 int GBCachedInterpreter::decode_execute(Core& core) {
   auto& page = block_page_table[core.pc >> PAGE_SHIFT];
   if (!page) {
@@ -479,7 +455,9 @@ int GBCachedInterpreter::decode_execute(Core& core) {
   }
 
   auto& block = page[core.pc & (PAGE_SIZE - 1)];
-  block = recompile_block(core);
+  if (!block) {
+    block = recompile_block(core);
+  }
 
   auto cycles_taken = (*block)();
   return cycles_taken;

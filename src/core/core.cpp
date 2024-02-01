@@ -123,10 +123,13 @@ template uint8_t Core::mem_read<uint8_t>(uint16_t addr);
 template uint16_t Core::mem_read<uint16_t>(uint16_t addr);
 template uint32_t Core::mem_read<uint32_t>(uint16_t addr);
 
+// due to me being lazy, the `write` flag controls if the reference
+// returned is uesd for modification purposes
 template <bool Write>
 uint8_t& Core::mem_byte_reference(uint16_t addr, uint8_t value) {
-  // due to me being lazy, the `write` flag controls if the reference
-  // returned is uesd for modification purposes
+  if constexpr (Write) {
+    GBCachedInterpreter::invalidate_page(addr);
+  }
 
   if (in_between(0x0000, 0x7FFF, addr)) {
     if (bootrom_enabled && in_between(0, 0x100, addr)) {
@@ -167,6 +170,8 @@ template uint8_t& Core::mem_byte_reference<true>(uint16_t addr, uint8_t value);
 
 template <typename T>
 void Core::mem_write(uint16_t addr, T value) {
+  GBCachedInterpreter::invalidate_page(addr);
+
   if (in_between(0x0000, 0x7FFF, addr)) {
     mbc.mem_reference<true, T>(addr, value) = value;
   } else if (in_between(0x8000, 0x9FFF, addr)) {
@@ -381,9 +386,7 @@ void Core::run_frame() {
     int cycles_taken = 0;
 
     if (!HALT) {
-      // PRINT("PC: 0x{:04X}\n", pc);
       cycles_taken = decode_execute_func(*this);
-      // cycles_taken = GBInterpreter::decode_execute(*this);
 
       // enable interrupt from EI after the next instruction
       if (req_IME) {

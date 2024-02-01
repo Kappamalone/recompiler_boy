@@ -57,4 +57,5 @@ public:
   static void emit_fallback_two_params(two_params_fp fallback, Core& core,
                                        int first, int second);
   static int decode_execute(Core& core);
+  static void invalidate_page(uint16_t addr);
 };
