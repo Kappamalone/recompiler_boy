@@ -48,7 +48,6 @@ void GBCachedInterpreter::emit_fallback_two_params(two_params_fp fallback,
 
 block_fp GBCachedInterpreter::recompile_block(Core& core) {
   check_emitted_cache();
-  // TODO: block invalidation
 
   auto emitted_function = (block_fp)code.getCurr();
   auto dyn_pc = core.pc;

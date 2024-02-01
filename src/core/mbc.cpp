@@ -1,5 +1,7 @@
 #include "mbc.h"
+#include "cached_interpreter.h"
 #include "common.h"
+#include "common_recompiler.h"
 #include "core.h"
 #include <algorithm>
 #include <fstream>
@@ -47,7 +49,15 @@ T& MBC::mem_reference(uint16_t addr, uint8_t value) {
     if (in_between(0x0000, 0x7FFF, addr)) {
       // handle MBC registers
       if (in_between(0x2000, 0x3FFF, addr)) {
+        auto old = mbc1regs.rom_bank_number;
         mbc1regs.rom_bank_number = value & 0x1f;
+
+        // invalidate all pages that refer to the old rom bank number
+        if (old != mbc1regs.rom_bank_number) {
+          for (int i = 0x4000; i < 0x8000; i += 1 << PAGE_SHIFT) {
+            GBCachedInterpreter::invalidate_page(i);
+          }
+        }
       }
     } else if (in_between(0xA000, 0xBFFF, addr)) {
       // write to external RAM

@@ -386,6 +386,7 @@ void Core::run_frame() {
     int cycles_taken = 0;
 
     if (!HALT) {
+      // PRINT("PC: 0x{:04X}\n", pc);
       cycles_taken = decode_execute_func(*this);
 
       // enable interrupt from EI after the next instruction

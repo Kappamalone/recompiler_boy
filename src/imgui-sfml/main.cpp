@@ -27,8 +27,6 @@ void signal_handler(int signal) {
 }
 
 int main(int argc, char** argv) {
-  // Set up the signal handler
-
   if (argc != 2 && argc != 3) {
     PANIC("Usage: ./TEMPLATE <rom> <bootrom>?\n");
   }

@@ -83,6 +83,6 @@ void Frontend::draw_imgui_windows() {
   static sf::Clock deltaClock;
   ImGui::SFML::Update(window, deltaClock.restart());
 
-  // draw_frame_counter(core);
-  // draw_tile_map(core);
+  draw_frame_counter(core);
+  draw_tile_map(core);
 }
